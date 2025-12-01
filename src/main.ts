@@ -1,4 +1,4 @@
-import { Plugin, MarkdownPostProcessorContext, Notice, MarkdownView, MarkdownRenderer, Component, ItemView, WorkspaceLeaf } from 'obsidian';
+import { Plugin, MarkdownPostProcessorContext, Notice, MarkdownView, MarkdownRenderer, Component, ItemView, WorkspaceLeaf, PluginSettingTab, Setting, App } from 'obsidian';
 import { spawn } from 'child_process';
 import * as path from 'path';
 
@@ -21,6 +21,23 @@ interface NoteVariables {
 interface VariableStore {
     [notePath: string]: NoteVariables;
 }
+
+// VSet color tracking per note
+interface VSetColorMap {
+    [notePath: string]: { [vsetName: string]: number };
+}
+
+// Color palette for vset badges
+const VSET_COLORS = [
+    { name: 'green', rgb: '100, 200, 150' },
+    { name: 'blue', rgb: '100, 150, 255' },
+    { name: 'orange', rgb: '255, 160, 80' },
+    { name: 'purple', rgb: '180, 130, 255' },
+    { name: 'teal', rgb: '80, 200, 200' },
+    { name: 'pink', rgb: '255, 130, 180' },
+    { name: 'yellow', rgb: '230, 200, 80' },
+    { name: 'red', rgb: '255, 120, 120' },
+];
 
 interface CalcBlocksSettings {
     pythonPath: string;
@@ -49,6 +66,9 @@ export default class CalcBlocksPlugin extends Plugin {
     
     // Variable storage (in-memory, cleared on note close)
     public variableStore: VariableStore = {};
+    
+    // VSet color assignments per note (tracks order of appearance)
+    public vsetColors: VSetColorMap = {};
 
     async onload() {
         await this.loadSettings();
@@ -152,7 +172,30 @@ export default class CalcBlocksPlugin extends Plugin {
             })
         );
 
+        // Add settings tab
+        this.addSettingTab(new VCalcSettingTab(this.app, this));
+
         console.log('VCalc plugin loaded');
+    }
+
+    // Get or assign a color index for a vset in a specific note
+    getVsetColorIndex(notePath: string, vsetName: string): number {
+        if (!this.vsetColors[notePath]) {
+            this.vsetColors[notePath] = {};
+        }
+        
+        if (this.vsetColors[notePath][vsetName] === undefined) {
+            // Assign next available color index
+            const usedIndices = Object.values(this.vsetColors[notePath]);
+            this.vsetColors[notePath][vsetName] = usedIndices.length % VSET_COLORS.length;
+        }
+        
+        return this.vsetColors[notePath][vsetName];
+    }
+
+    getVsetColor(notePath: string, vsetName: string): { name: string, rgb: string } {
+        const index = this.getVsetColorIndex(notePath, vsetName);
+        return VSET_COLORS[index];
     }
 
     async activateVariablesView() {
@@ -497,10 +540,13 @@ export default class CalcBlocksPlugin extends Plugin {
             
             // Show vset badge if defined
             if (vset) {
+                const color = this.getVsetColor(context.sourcePath, vset);
                 const vsetBadge = document.createElement('span');
                 vsetBadge.className = 'calc-vset-badge';
                 vsetBadge.textContent = vset;
                 vsetBadge.title = `Variable Set: ${vset}`;
+                vsetBadge.setAttribute('data-vset-color', color.name);
+                vsetBadge.style.setProperty('--vset-color', color.rgb);
                 btnGroup.appendChild(vsetBadge);
             }
             
@@ -581,15 +627,14 @@ export default class CalcBlocksPlugin extends Plugin {
             // This would be any math block inside callout-content that's not in our .calc-output
             const calloutContent = callout.querySelector('.callout-content');
             if (calloutContent) {
-                // Find saved output markers or math blocks that aren't ours
-                const existingMathBlocks = calloutContent.querySelectorAll('.math-block, mjx-container');
+                // Find saved output - only target top-level .math-block elements (not nested mjx-container)
+                const existingMathBlocks = calloutContent.querySelectorAll('.math-block');
                 existingMathBlocks.forEach((mathBlock) => {
                     // Skip if it's inside our output container
                     if (mathBlock.closest('.calc-output')) return;
                     
-                    // Check if already marked as outdated
-                    const parent = mathBlock.parentElement;
-                    if (parent && parent.classList.contains('calc-saved-outdated')) return;
+                    // Skip if already marked as outdated
+                    if (mathBlock.closest('.calc-saved-outdated')) return;
                     
                     // Wrap in outdated container
                     const wrapper = document.createElement('div');
@@ -1402,10 +1447,12 @@ class VCalcVariablesView extends ItemView {
         
         const tabsContainer = container.createEl('div', { cls: 'vcalc-tabs' });
         vsets.forEach(vsetName => {
+            const color = this.plugin.getVsetColor(notePath, vsetName);
             const tab = tabsContainer.createEl('button', {
                 text: vsetName,
                 cls: `vcalc-tab ${this.selectedVset === vsetName ? 'vcalc-tab-active' : ''}`
             });
+            tab.style.setProperty('--vset-color', color.rgb);
             tab.addEventListener('click', () => {
                 this.selectedVset = vsetName;
                 this.refresh();
@@ -1446,6 +1493,98 @@ class VCalcVariablesView extends ItemView {
         clearBtn.addEventListener('click', () => {
             this.plugin.clearNoteVariables(notePath);
             this.refresh();
+        });
+    }
+}
+
+// Settings Tab
+class VCalcSettingTab extends PluginSettingTab {
+    plugin: CalcBlocksPlugin;
+
+    constructor(app: App, plugin: CalcBlocksPlugin) {
+        super(app, plugin);
+        this.plugin = plugin;
+    }
+
+    display(): void {
+        const { containerEl } = this;
+        containerEl.empty();
+
+        containerEl.createEl('h2', { text: 'VCalc Settings' });
+
+        // Python Settings Section
+        containerEl.createEl('h3', { text: 'Python Configuration' });
+
+        new Setting(containerEl)
+            .setName('Python Path')
+            .setDesc('Path to Python executable (e.g., python3, python, or full path)')
+            .addText(text => text
+                .setPlaceholder('python3')
+                .setValue(this.plugin.settings.pythonPath)
+                .onChange(async (value) => {
+                    this.plugin.settings.pythonPath = value || 'python3';
+                    await this.plugin.saveSettings();
+                }));
+
+        // Behavior Settings Section
+        containerEl.createEl('h3', { text: 'Behavior' });
+
+        new Setting(containerEl)
+            .setName('Auto-save on Run')
+            .setDesc('Automatically save LaTeX output to file when running a calculation')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.autoSaveOnRun)
+                .onChange(async (value) => {
+                    this.plugin.settings.autoSaveOnRun = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        // Display Settings Section
+        containerEl.createEl('h3', { text: 'Display Options' });
+
+        new Setting(containerEl)
+            .setName('Show Symbolic Expression')
+            .setDesc('Show the symbolic form of the equation (e.g., z = x + y)')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showSymbolic)
+                .onChange(async (value) => {
+                    this.plugin.settings.showSymbolic = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Show Substitution Step')
+            .setDesc('Show values substituted into the equation (e.g., z = 5 + 10)')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showSubstitution)
+                .onChange(async (value) => {
+                    this.plugin.settings.showSubstitution = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Show Result')
+            .setDesc('Show the final calculated result (e.g., z = 15)')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showResult)
+                .onChange(async (value) => {
+                    this.plugin.settings.showResult = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        // Color Palette Info
+        containerEl.createEl('h3', { text: 'Variable Set Colors' });
+        
+        const colorInfo = containerEl.createEl('div', { cls: 'vcalc-color-info' });
+        colorInfo.createEl('p', { 
+            text: 'Variable sets are automatically assigned colors based on their order of appearance in each note:' 
+        });
+        
+        const colorList = colorInfo.createEl('div', { cls: 'vcalc-color-list' });
+        VSET_COLORS.forEach((color, index) => {
+            const colorItem = colorList.createEl('span', { cls: 'vcalc-color-sample' });
+            colorItem.style.setProperty('--sample-color', color.rgb);
+            colorItem.textContent = `${index + 1}. ${color.name}`;
         });
     }
 }

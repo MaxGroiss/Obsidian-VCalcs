@@ -26,15 +26,16 @@
     gap: 6px;
 }
 
-/* VSet badge */
+/* VSet badge - uses dynamic --vset-color variable */
 .calc-vset-badge {
+    --vset-color: 100, 200, 150; /* default green, overridden by inline style */
     padding: 2px 8px;
     font-size: 11px;
     font-weight: 500;
     border-radius: 10px;
-    background-color: rgba(100, 200, 150, 0.2);
-    color: rgb(100, 200, 150);
-    border: 1px solid rgba(100, 200, 150, 0.4);
+    background-color: rgba(var(--vset-color), 0.2);
+    color: rgb(var(--vset-color));
+    border: 1px solid rgba(var(--vset-color), 0.4);
     font-family: var(--font-monospace);
 }
 
@@ -265,6 +266,7 @@
 }
 
 .vcalc-tab {
+    --vset-color: 100, 200, 150; /* default, overridden by inline style */
     padding: 4px 12px;
     font-size: 12px;
     border-radius: 12px;
@@ -277,14 +279,15 @@
 }
 
 .vcalc-tab:hover {
-    background-color: var(--background-modifier-hover);
-    color: var(--text-normal);
+    background-color: rgba(var(--vset-color), 0.1);
+    color: rgb(var(--vset-color));
+    border-color: rgba(var(--vset-color), 0.3);
 }
 
 .vcalc-tab-active {
-    background-color: rgba(100, 200, 150, 0.2);
-    color: rgb(100, 200, 150);
-    border-color: rgba(100, 200, 150, 0.4);
+    background-color: rgba(var(--vset-color), 0.2);
+    color: rgb(var(--vset-color));
+    border-color: rgba(var(--vset-color), 0.4);
 }
 
 /* Variables list */
@@ -360,25 +363,9 @@
     --callout-color: 138, 180, 248;
 }
 
-.theme-dark .calc-vset-badge {
-    background-color: rgba(100, 200, 150, 0.15);
-}
-
 /* Light theme adjustments */
 .theme-light .callout[data-callout="vcalc"] {
     --callout-color: 25, 118, 210;
-}
-
-.theme-light .calc-vset-badge {
-    background-color: rgba(50, 150, 100, 0.15);
-    color: rgb(50, 150, 100);
-    border-color: rgba(50, 150, 100, 0.4);
-}
-
-.theme-light .vcalc-tab-active {
-    background-color: rgba(50, 150, 100, 0.15);
-    color: rgb(50, 150, 100);
-    border-color: rgba(50, 150, 100, 0.4);
 }
 
 /* Print/Export styling */
@@ -398,4 +385,34 @@
     .callout[data-callout="vcalc"] pre.calc-hidden {
         display: none;
     }
+}
+
+/* =====================================================
+   SETTINGS PAGE
+   ===================================================== */
+
+.vcalc-color-info {
+    margin-top: 8px;
+}
+
+.vcalc-color-info p {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.vcalc-color-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.vcalc-color-sample {
+    padding: 4px 12px;
+    font-size: 12px;
+    border-radius: 12px;
+    background-color: rgba(var(--sample-color), 0.2);
+    color: rgb(var(--sample-color));
+    border: 1px solid rgba(var(--sample-color), 0.4);
+    font-family: var(--font-monospace);
 }

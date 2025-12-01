@@ -442,7 +442,7 @@ surface(X, Y, Z)
 > h = 10
 > E_pot = m * g * h
 > ```
-
+```
 ---
 
 _Created with ❤️ (and AI) for engineers, scientists, and students who want beautiful math in their notes._

@@ -164,6 +164,15 @@ export default class CalcBlocksPlugin extends Plugin {
             }
         });
 
+        // Add command to clear all saved LaTeX from current note
+        this.addCommand({
+            id: 'clear-all-saved-latex',
+            name: 'Clear All Saved LaTeX from Note',
+            callback: async () => {
+                await this.clearAllSavedLatex();
+            }
+        });
+
         // Listen for file close events to clear variables
         this.registerEvent(
             this.app.workspace.on('file-open', (file) => {
@@ -465,6 +474,120 @@ export default class CalcBlocksPlugin extends Plugin {
         }
     }
 
+    async clearAllSavedLatex() {
+        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!activeView) {
+            new Notice('No active markdown view');
+            return;
+        }
+
+        const file = activeView.file;
+        if (!file) return;
+
+        try {
+            let content = await this.app.vault.adapter.read(file.path);
+            const lines = content.split('\n');
+            
+            // Find and remove all vcalc-output sections
+            let newLines: string[] = [];
+            let inOutput = false;
+            let removedCount = 0;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                
+                if (line.includes('<!-- vcalc-output -->')) {
+                    inOutput = true;
+                    removedCount++;
+                    // Also remove blank line before output if present
+                    if (newLines.length > 0 && newLines[newLines.length - 1].match(/^>\s*$/)) {
+                        newLines.pop();
+                    }
+                    continue;
+                }
+                
+                if (line.includes('<!-- /vcalc-output -->')) {
+                    inOutput = false;
+                    continue;
+                }
+                
+                if (!inOutput) {
+                    newLines.push(line);
+                }
+            }
+            
+            if (removedCount > 0) {
+                await this.app.vault.adapter.write(file.path, newLines.join('\n'));
+                new Notice(`Cleared ${removedCount} saved LaTeX output(s) from note!`);
+            } else {
+                new Notice('No saved LaTeX outputs found in this note.');
+            }
+        } catch (error) {
+            console.error('Error clearing saved LaTeX:', error);
+            new Notice(`Error: ${(error as Error).message}`);
+        }
+    }
+
+    async clearBlockSavedLatex(sourcePath: string, blockIndex: number, blockTitle: string) {
+        try {
+            let content = await this.app.vault.adapter.read(sourcePath);
+            const lines = content.split('\n');
+            
+            // Find the Nth vcalc block
+            let currentBlockIndex = -1;
+            let outputStart = -1;
+            let outputEnd = -1;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                
+                // Look for vcalc callout start
+                if (line.match(/^>\s*\[!vcalc\]/i)) {
+                    currentBlockIndex++;
+                    
+                    if (currentBlockIndex === blockIndex) {
+                        // Found our block, now find the output section
+                        for (let j = i + 1; j < lines.length; j++) {
+                            const nextLine = lines[j];
+                            
+                            if (nextLine.includes('<!-- vcalc-output -->') && outputStart === -1) {
+                                outputStart = j;
+                                // Check for blank line before
+                                if (outputStart > 0 && lines[outputStart - 1].match(/^>\s*$/)) {
+                                    outputStart--;
+                                }
+                            }
+                            if (nextLine.includes('<!-- /vcalc-output -->')) {
+                                outputEnd = j;
+                                break;
+                            }
+                            
+                            // Stop at next vcalc block or end of callout
+                            if (nextLine.match(/^>\s*\[!vcalc\]/i)) {
+                                break;
+                            }
+                            if (!nextLine.startsWith('>') && nextLine.trim() !== '') {
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            if (outputStart !== -1 && outputEnd !== -1) {
+                lines.splice(outputStart, outputEnd - outputStart + 1);
+                await this.app.vault.adapter.write(sourcePath, lines.join('\n'));
+                new Notice(`Cleared saved LaTeX for "${blockTitle}"`);
+            } else {
+                new Notice('No saved LaTeX found for this block.');
+            }
+        } catch (error) {
+            console.error('Error clearing block LaTeX:', error);
+            new Notice(`Error: ${(error as Error).message}`);
+        }
+    }
+
 
     async setupConverterScript() {
         // The Python script will be in the plugin's directory
@@ -484,11 +607,11 @@ export default class CalcBlocksPlugin extends Plugin {
         });
     }
 
-    parseVsetFromCodeBlock(callout: HTMLElement): { code: string, vset: string | null } {
+    parseVsetFromCodeBlock(callout: HTMLElement): { code: string, vset: string | null, hidden: boolean } {
         // Look for the code block's language class which contains the vset parameter
         // Obsidian renders ```python {vset:main} as a code element with classes
         const codeBlock = callout.querySelector('pre > code');
-        if (!codeBlock) return { code: '', vset: null };
+        if (!codeBlock) return { code: '', vset: null, hidden: false };
         
         const code = codeBlock.textContent || '';
         
@@ -500,23 +623,37 @@ export default class CalcBlocksPlugin extends Plugin {
         const preEl = callout.querySelector('pre');
         const dataLine = preEl?.getAttribute('data-line') || '';
         
-        // Method 2: Check the first line of code for a comment with vset
-        // Users can write: # {vset:main} as first line
+        // Method 2: Check the first line of code for a comment with vset and options
+        // Users can write: # {vset:main} or # {vset:main, hidden} as first line
         const lines = code.split('\n');
         let vset: string | null = null;
+        let hidden = false;
         let cleanCode = code;
         
-        // Check first line for vset declaration
+        // Check first line for vset/options declaration
         if (lines.length > 0) {
-            const vsetMatch = lines[0].match(/#\s*\{vset:(\w+)\}/);
-            if (vsetMatch) {
-                vset = vsetMatch[1];
-                // Remove the vset line from code
+            // Match pattern like: # {vset:main} or # {vset:main, hidden} or # {hidden}
+            const optionsMatch = lines[0].match(/#\s*\{([^}]+)\}/);
+            if (optionsMatch) {
+                const options = optionsMatch[1];
+                
+                // Parse vset
+                const vsetMatch = options.match(/vset:(\w+)/);
+                if (vsetMatch) {
+                    vset = vsetMatch[1];
+                }
+                
+                // Parse hidden flag
+                if (options.includes('hidden')) {
+                    hidden = true;
+                }
+                
+                // Remove the options line from code
                 cleanCode = lines.slice(1).join('\n');
             }
         }
         
-        return { code: cleanCode, vset };
+        return { code: cleanCode, vset, hidden };
     }
 
     enhanceCalculationCallout(callout: HTMLElement, context: MarkdownPostProcessorContext) {
@@ -524,8 +661,14 @@ export default class CalcBlocksPlugin extends Plugin {
         const codeBlock = callout.querySelector('pre > code');
         if (!codeBlock) return;
 
-        // Parse vset from code block
-        const { vset } = this.parseVsetFromCodeBlock(callout);
+        // Parse vset and options from code block
+        const { vset, hidden } = this.parseVsetFromCodeBlock(callout);
+        
+        // Apply hidden state if specified in code
+        const preEl = callout.querySelector('pre');
+        if (hidden && preEl) {
+            preEl.classList.add('calc-hidden');
+        }
 
         // Get the custom title (user-defined text after [!vcalc])
         const titleInner = callout.querySelector('.callout-title-inner');
@@ -553,8 +696,11 @@ export default class CalcBlocksPlugin extends Plugin {
             // Toggle Code button
             const toggleCodeBtn = document.createElement('button');
             toggleCodeBtn.className = 'calc-toggle-btn';
+            if (hidden) {
+                toggleCodeBtn.classList.add('calc-btn-active');
+            }
             toggleCodeBtn.textContent = '< >';
-            toggleCodeBtn.title = 'Toggle Code';
+            toggleCodeBtn.title = 'Toggle Code (add "hidden" to options to persist)';
             toggleCodeBtn.addEventListener('click', () => {
                 const preEl = callout.querySelector('pre');
                 if (preEl) {
@@ -586,6 +732,30 @@ export default class CalcBlocksPlugin extends Plugin {
                 await this.executeAndRender(pythonCode, callout, context, currentVset);
             });
             btnGroup.appendChild(runBtn);
+            
+            // Clear button (to remove saved LaTeX from file)
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'calc-clear-title-btn';
+            clearBtn.textContent = '✕';
+            clearBtn.title = 'Clear saved LaTeX from file';
+            clearBtn.addEventListener('click', async () => {
+                // Calculate block index
+                const allCallouts = document.querySelectorAll('.callout[data-callout="vcalc"]');
+                let blockIndex = -1;
+                for (let i = 0; i < allCallouts.length; i++) {
+                    if (allCallouts[i] === callout) {
+                        blockIndex = i;
+                        break;
+                    }
+                }
+                
+                await this.clearBlockSavedLatex(context.sourcePath, blockIndex, customTitle);
+                
+                // Remove outdated markers if present
+                const outdatedWrappers = callout.querySelectorAll('.calc-saved-outdated');
+                outdatedWrappers.forEach((wrapper) => wrapper.remove());
+            });
+            btnGroup.appendChild(clearBtn);
             
             titleEl.appendChild(btnGroup);
         }
@@ -763,8 +933,15 @@ export default class CalcBlocksPlugin extends Plugin {
                 }
             }
             
+            // Build display options
+            const displayOptions = {
+                showSymbolic: this.settings.showSymbolic,
+                showSubstitution: this.settings.showSubstitution,
+                showResult: this.settings.showResult
+            };
+            
             // Spawn Python process with our converter script
-            const pythonCode = this.generateConverterCodeWithVars(code, varInjection);
+            const pythonCode = this.generateConverterCodeWithVars(code, varInjection, displayOptions);
             
             const proc = spawn(this.settings.pythonPath, ['-c', pythonCode]);
             
@@ -1054,16 +1231,26 @@ except Exception as e:
 `;
     }
 
-    generateConverterCodeWithVars(userCode: string, varInjection: string): string {
+    generateConverterCodeWithVars(userCode: string, varInjection: string, displayOptions: { showSymbolic: boolean, showSubstitution: boolean, showResult: boolean }): string {
         // Escape the user code and var injection for embedding in Python string
         const escapedCode = userCode.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
         const escapedVars = varInjection.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+        
+        // Convert display options to Python booleans
+        const showSymbolic = displayOptions.showSymbolic ? 'True' : 'False';
+        const showSubstitution = displayOptions.showSubstitution ? 'True' : 'False';
+        const showResult = displayOptions.showResult ? 'True' : 'False';
         
         return `
 import ast
 import math
 import sys
 import json
+
+# Display options
+SHOW_SYMBOLIC = ${showSymbolic}
+SHOW_SUBSTITUTION = ${showSubstitution}
+SHOW_RESULT = ${showResult}
 
 # Make math functions available
 from math import sqrt, sin, cos, tan, log, log10, exp, pi, e, atan, asin, acos
@@ -1244,17 +1431,36 @@ def python_to_latex_with_vars(code, existing_vars_code):
             # Convert variable name to LaTeX
             var_latex = expr_to_latex(target, namespace)
             
+            # Build the equation based on display options
             # Check if simple constant assignment
             if isinstance(expr, ast.Constant):
+                # For constants, just show var = value
                 latex_lines.append(f"{var_latex} &= {value_str}")
             else:
                 symbolic = expr_to_latex(expr, namespace)
                 substituted = substitute_values(expr, namespace)
                 
-                if substituted != symbolic:
-                    latex_lines.append(f"{var_latex} &= {symbolic} = {substituted} = {value_str}")
-                else:
-                    latex_lines.append(f"{var_latex} &= {symbolic} = {value_str}")
+                # Build equation parts based on settings
+                parts = [var_latex, "&="]
+                
+                if SHOW_SYMBOLIC:
+                    parts.append(symbolic)
+                
+                if SHOW_SUBSTITUTION and substituted != symbolic:
+                    if SHOW_SYMBOLIC:
+                        parts.append("=")
+                    parts.append(substituted)
+                
+                if SHOW_RESULT:
+                    if SHOW_SYMBOLIC or SHOW_SUBSTITUTION:
+                        parts.append("=")
+                    parts.append(value_str)
+                
+                # If nothing is shown, at least show the result
+                if not SHOW_SYMBOLIC and not SHOW_SUBSTITUTION and not SHOW_RESULT:
+                    parts.append(value_str)
+                
+                latex_lines.append(" ".join(parts))
     
     # Build aligned environment
     latex = ""

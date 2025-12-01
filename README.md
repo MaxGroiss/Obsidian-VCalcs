@@ -159,15 +159,293 @@ Click the **calculator icon** in the left ribbon to open the Variables panel. It
 
 ---
 
-## Roadmap / Future Ideas
+## Current Features (v0.6.0)
 
-- [ ] "Run All" button to execute all blocks in order
-- [ ] Automatic dependency detection
-- [ ] Persistent variables (save to file)
-- [ ] Units support (e.g., meters, seconds)
-- [ ] Better error messages
-- [ ] Export to PDF/Word
-- [ ] Settings panel for customization
+### Core Functionality
+
+- **`[!vcalc]` Callout Syntax** - Clean integration with Obsidian's native callout system
+- **Python Execution** - Write real Python code, get LaTeX output
+- **Automatic LaTeX Conversion** - AST-based parsing converts Python expressions to properly formatted LaTeX
+- **Greek Letter Support** - Use `alpha`, `beta`, `theta`, etc. in variable names → renders as α, β, θ
+- **Subscript Handling** - `x_1`, `v_max` → renders as x₁, vₘₐₓ
+
+### Variable Sets (VSet)
+
+- **Shared Variables** - Define variables in one block, use them in another
+- **Named Sets** - Organize calculations with `# {vset:main}`, `# {vset:circuit}`, etc.
+- **Automatic Color Coding** - Each vset gets a unique color (green, blue, orange, purple, teal, pink, yellow, red)
+- **Sidebar Panel** - View all variables with their values, types, and source blocks
+
+### Display Options
+
+|Setting|Description|
+|---|---|
+|Show Symbolic|Display the formula (e.g., `z = x + y`)|
+|Show Substitution|Display values substituted (e.g., `z = 5 + 10`)|
+|Show Result|Display final result (e.g., `z = 15`)|
+
+### File Persistence
+
+- **Save to File** - Persist LaTeX output to markdown for Reading View & PDF export
+- **Clear from File** - Remove saved output with ✕ button or command
+- **Auto-Save Option** - Automatically save on every run
+- **Outdated Indicator** - Visual warning when saved output differs from current calculation
+- **Smart Replacement** - Re-running updates existing saved output
+
+### Commands
+
+|Command|Description|
+|---|---|
+|Insert VCalc Block|Insert a template block|
+|Run All VCalc Blocks|Execute all blocks in order|
+|Save All LaTeX to File|Persist all outputs|
+|Run & Save All|Execute and persist in one step|
+|Clear All Saved LaTeX|Remove all persisted outputs|
+
+### Appearance & Styling
+
+**Global Settings:**
+
+- Background Style: Default, Subtle, Solid, Transparent
+- Compact Mode: Reduced padding for denser layouts
+- Sync Accent with VSet: Match left border & title to vset color
+
+**Per-Block Options:**
+
+```python
+# {vset:main, hidden, accent:vset, bg:transparent, compact}
+```
+
+|Option|Values|Description|
+|---|---|---|
+|`vset:name`|any identifier|Variable set name|
+|`hidden`|flag|Hide code in editor & PDF export|
+|`accent:vset`|flag|Sync border color with vset|
+|`accent:default`|flag|Use default blue accent|
+|`bg:transparent`|flag|No background|
+|`bg:subtle`|flag|Very light background|
+|`bg:solid`|flag|More visible background|
+|`compact`|flag|Reduced padding|
+
+### Math Functions Supported
+
+- **Basic:** `+`, `-`, `*`, `/`, `**` (power), `%` (mod)
+- **Functions:** `sqrt()`, `abs()`, `sin()`, `cos()`, `tan()`, `log()`, `log10()`, `exp()`
+- **Inverse Trig:** `asin()`, `acos()`, `atan()`
+- **Constants:** `pi`, `e`
+- **Complex Numbers:** `j` for imaginary unit
+
+---
+
+## Planned Features (Roadmap)
+
+### 🔢 Matrix Support
+
+**Priority: High**
+
+Support for matrix definitions, operations, and LaTeX rendering.
+
+```python
+# Planned syntax
+A = Matrix([[1, 2], [3, 4]])
+B = Matrix([[5, 6], [7, 8]])
+C = A * B  # Matrix multiplication
+det_A = det(A)  # Determinant
+inv_A = A.inv()  # Inverse
+```
+
+**LaTeX Output:** $$A = \begin{pmatrix} 1 & 2 \ 3 & 4 \end{pmatrix}$$
+
+**Library:** `sympy.Matrix` or `numpy`
+
+---
+
+### 📐 Unit Support
+
+**Priority: High**
+
+Physical calculations with automatic unit conversion and dimensional analysis.
+
+```python
+# Planned syntax
+R = 8.314 * J/(mol*K)
+T = 25 * degC
+P = 101325 * Pa
+n = 1 * mol
+V = (n * R * T) / P
+```
+
+**LaTeX Output:** $$V = \frac{n \cdot R \cdot T}{P} = \frac{1,\text{mol} \cdot 8.314,\frac{\text{J}}{\text{mol·K}} \cdot 298.15,\text{K}}{101325,\text{Pa}} = 0.0245,\text{m}^3$$
+
+**Library:** `pint`
+
+**Features:**
+
+- Automatic unit conversion
+- Dimensional analysis errors
+- SI and common engineering units
+- Custom unit definitions
+
+---
+
+### 🔣 Symbolic Mathematics
+
+**Priority: High**
+
+Symbolic operations using SymPy for algebraic manipulation.
+
+```python
+# Planned syntax
+x, y, m, b = symbols('x y m b')
+
+# Define equation
+eq = Eq(y, m*x + b)
+
+# Solve for x
+x_expr = solve(eq, x)  # → x = (y - b) / m
+
+# Differentiation
+f = x**3 + 2*x**2 - 5*x
+df = diff(f, x)  # → 3x² + 4x - 5
+
+# Integration
+F = integrate(f, x)  # → x⁴/4 + 2x³/3 - 5x²/2 + C
+
+# Simplification
+expr = (x**2 - 1) / (x - 1)
+simplified = simplify(expr)  # → x + 1
+```
+
+**LaTeX Output:** $$\frac{d}{dx}(x^3 + 2x^2 - 5x) = 3x^2 + 4x - 5$$
+
+$$\int (x^3 + 2x^2 - 5x), dx = \frac{x^4}{4} + \frac{2x^3}{3} - \frac{5x^2}{2} + C$$
+
+**Library:** `sympy`
+
+**Features:**
+
+- Symbol definition
+- Equation solving / rearranging
+- Differentiation & Integration
+- Limits
+- Series expansion
+- Simplification
+
+---
+
+### 📈 2D Plots
+
+**Priority: Medium**
+
+Generate plots inline as SVG images.
+
+```python
+# Planned syntax
+# {vset:main, plot}
+x = linspace(0, 2*pi, 100)
+y = sin(x)
+plot(x, y, title="Sine Wave", xlabel="x", ylabel="sin(x)")
+```
+
+**Output:** Inline SVG rendered directly in the note
+
+**Library:** `matplotlib` → SVG export
+
+**Features:**
+
+- Line plots
+- Scatter plots
+- Multiple series
+- Labels and titles
+- Grid options
+- Custom colors
+
+---
+
+### 📊 3D Plots
+
+**Priority: Low (Nice to have)**
+
+3D surface and line plots.
+
+```python
+# Planned syntax
+# {vset:main, plot3d}
+x = linspace(-5, 5, 50)
+y = linspace(-5, 5, 50)
+X, Y = meshgrid(x, y)
+Z = sin(sqrt(X**2 + Y**2))
+surface(X, Y, Z)
+```
+
+**Library:** `matplotlib` 3D projection → SVG
+
+**Note:** Lower priority as 3D plots are less common in typical calculations and more complex to render well as static images.
+
+---
+
+## Technical Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    Obsidian                          │
+│  ┌───────────────────────────────────────────────┐  │
+│  │              VCalc Plugin (TypeScript)         │  │
+│  │  • Callout post-processor                      │  │
+│  │  • Variable store (per-note, per-vset)         │  │
+│  │  • Settings management                         │  │
+│  │  • File persistence (save/clear LaTeX)         │  │
+│  └───────────────────┬───────────────────────────┘  │
+│                      │                               │
+│                      ▼                               │
+│  ┌───────────────────────────────────────────────┐  │
+│  │           Python Subprocess                    │  │
+│  │  • AST parsing                                 │  │
+│  │  • Expression evaluation                       │  │
+│  │  • LaTeX conversion                            │  │
+│  │  • Variable extraction                         │  │
+│  └───────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+## Example Usage
+
+### Basic Calculation
+
+```markdown
+> [!vcalc] Ohm's Law
+> ```python
+> # {vset:circuit}
+> U = 12      # Voltage in V
+> R = 470     # Resistance in Ω
+> I = U / R   # Current
+> ```
+```
+
+**Output:** $$U = 12$$ $$R = 470$$ $$I = \frac{U}{R} = \frac{12}{470} = 0.0255$$
+
+### Multi-Block with Shared Variables
+
+```markdown
+> [!vcalc] Define Constants
+> ```python
+> # {vset:physics}
+> g = 9.81
+> m = 5
+> ```
+
+> [!vcalc] Calculate Energy
+> ```python
+> # {vset:physics}
+> h = 10
+> E_pot = m * g * h
+> ```
+
+---
+
+_Created with ❤️ (and AI) for engineers, scientists, and students who want beautiful math in their notes._
 
 ---
 

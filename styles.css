@@ -4,8 +4,50 @@
 .callout[data-callout="vcalc"] {
     --callout-color: 138, 180, 248;
     --callout-icon: lucide-calculator;
-    background-color: rgba(var(--callout-color), 0.1);
-    border-left: 4px solid rgb(var(--callout-color));
+    --vcalc-accent-color: var(--callout-color);
+    --vcalc-bg-opacity: 0.1;
+    background-color: rgba(var(--callout-color), var(--vcalc-bg-opacity));
+    border-left: 4px solid rgb(var(--vcalc-accent-color));
+}
+
+/* When accent is synced with vset, only border and title change */
+.callout[data-callout="vcalc"].vcalc-accent-synced {
+    border-left-color: rgb(var(--vcalc-accent-color));
+}
+
+.callout[data-callout="vcalc"].vcalc-accent-synced .callout-title-inner {
+    color: rgb(var(--vcalc-accent-color));
+}
+
+/* Background style variants */
+.callout[data-callout="vcalc"].vcalc-bg-transparent {
+    background-color: transparent;
+}
+
+.callout[data-callout="vcalc"].vcalc-bg-subtle {
+    --vcalc-bg-opacity: 0.05;
+}
+
+.callout[data-callout="vcalc"].vcalc-bg-solid {
+    --vcalc-bg-opacity: 0.15;
+}
+
+/* Compact mode */
+.callout[data-callout="vcalc"].vcalc-compact {
+    padding: 8px 12px;
+}
+
+.callout[data-callout="vcalc"].vcalc-compact .callout-content {
+    padding: 4px 0;
+}
+
+.callout[data-callout="vcalc"].vcalc-compact pre {
+    margin: 4px 0;
+    padding: 8px;
+}
+
+.callout[data-callout="vcalc"].vcalc-compact .calc-output {
+    margin-top: 8px;
 }
 
 .callout[data-callout="vcalc"] .callout-title {

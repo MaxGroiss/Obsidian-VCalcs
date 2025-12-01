@@ -1,10 +1,10 @@
 {
   "id": "obsidian-vcalc",
   "name": "VCalc",
-  "version": "0.4.0",
+  "version": "0.6.0",
   "minAppVersion": "1.0.0",
   "description": "Visual calculations: Execute Python code and render as LaTeX with shared variables across blocks",
-  "author": "Your Name",
-  "authorUrl": "https://github.com/yourusername",
+  "author": "Max Groiss",
+  "authorUrl": "https://github.com/MaxGroiss",
   "isDesktopOnly": true
 }

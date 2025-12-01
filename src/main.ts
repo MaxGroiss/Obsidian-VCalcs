@@ -45,6 +45,9 @@ interface CalcBlocksSettings {
     showSubstitution: boolean;
     showResult: boolean;
     autoSaveOnRun: boolean;
+    syncAccentWithVset: boolean;
+    backgroundStyle: 'default' | 'transparent' | 'subtle' | 'solid';
+    compactMode: boolean;
 }
 
 const DEFAULT_SETTINGS: CalcBlocksSettings = {
@@ -52,7 +55,10 @@ const DEFAULT_SETTINGS: CalcBlocksSettings = {
     showSymbolic: true,
     showSubstitution: true,
     showResult: true,
-    autoSaveOnRun: false
+    autoSaveOnRun: false,
+    syncAccentWithVset: false,
+    backgroundStyle: 'default',
+    compactMode: false
 };
 
 // Sidebar view identifier
@@ -607,11 +613,18 @@ export default class CalcBlocksPlugin extends Plugin {
         });
     }
 
-    parseVsetFromCodeBlock(callout: HTMLElement): { code: string, vset: string | null, hidden: boolean } {
+    parseVsetFromCodeBlock(callout: HTMLElement): { 
+        code: string, 
+        vset: string | null, 
+        hidden: boolean, 
+        accentVset: boolean | null,
+        bgStyle: string | null,
+        compact: boolean | null
+    } {
         // Look for the code block's language class which contains the vset parameter
         // Obsidian renders ```python {vset:main} as a code element with classes
         const codeBlock = callout.querySelector('pre > code');
-        if (!codeBlock) return { code: '', vset: null, hidden: false };
+        if (!codeBlock) return { code: '', vset: null, hidden: false, accentVset: null, bgStyle: null, compact: null };
         
         const code = codeBlock.textContent || '';
         
@@ -623,11 +636,14 @@ export default class CalcBlocksPlugin extends Plugin {
         const preEl = callout.querySelector('pre');
         const dataLine = preEl?.getAttribute('data-line') || '';
         
-        // Method 2: Check the first line of code for a comment with vset and options
-        // Users can write: # {vset:main} or # {vset:main, hidden} as first line
+        // Method 2: Check the first line of code for a comment with options
+        // Examples: # {vset:main} or # {vset:main, hidden, accent:vset, bg:transparent, compact}
         const lines = code.split('\n');
         let vset: string | null = null;
         let hidden = false;
+        let accentVset: boolean | null = null;
+        let bgStyle: string | null = null;
+        let compact: boolean | null = null;
         let cleanCode = code;
         
         // Check first line for vset/options declaration
@@ -648,12 +664,29 @@ export default class CalcBlocksPlugin extends Plugin {
                     hidden = true;
                 }
                 
+                // Parse accent option: accent:vset or accent:default
+                const accentMatch = options.match(/accent:(\w+)/);
+                if (accentMatch) {
+                    accentVset = accentMatch[1] === 'vset';
+                }
+                
+                // Parse background style: bg:transparent, bg:subtle, bg:solid
+                const bgMatch = options.match(/bg:(\w+)/);
+                if (bgMatch) {
+                    bgStyle = bgMatch[1];
+                }
+                
+                // Parse compact flag
+                if (options.includes('compact')) {
+                    compact = true;
+                }
+                
                 // Remove the options line from code
                 cleanCode = lines.slice(1).join('\n');
             }
         }
         
-        return { code: cleanCode, vset, hidden };
+        return { code: cleanCode, vset, hidden, accentVset, bgStyle, compact };
     }
 
     enhanceCalculationCallout(callout: HTMLElement, context: MarkdownPostProcessorContext) {
@@ -662,12 +695,32 @@ export default class CalcBlocksPlugin extends Plugin {
         if (!codeBlock) return;
 
         // Parse vset and options from code block
-        const { vset, hidden } = this.parseVsetFromCodeBlock(callout);
+        const { vset, hidden, accentVset, bgStyle, compact } = this.parseVsetFromCodeBlock(callout);
         
         // Apply hidden state if specified in code
         const preEl = callout.querySelector('pre');
         if (hidden && preEl) {
             preEl.classList.add('calc-hidden');
+        }
+        
+        // Apply background style (per-block overrides global)
+        const effectiveBgStyle = bgStyle || this.settings.backgroundStyle;
+        if (effectiveBgStyle !== 'default') {
+            callout.classList.add(`vcalc-bg-${effectiveBgStyle}`);
+        }
+        
+        // Apply compact mode (per-block overrides global)
+        const isCompact = compact !== null ? compact : this.settings.compactMode;
+        if (isCompact) {
+            callout.classList.add('vcalc-compact');
+        }
+        
+        // Apply vset color to accent (border + title only) if enabled
+        const shouldSyncAccent = accentVset !== null ? accentVset : this.settings.syncAccentWithVset;
+        if (vset && shouldSyncAccent) {
+            const color = this.getVsetColor(context.sourcePath, vset);
+            callout.classList.add('vcalc-accent-synced');
+            (callout as HTMLElement).style.setProperty('--vcalc-accent-color', color.rgb);
         }
 
         // Get the custom title (user-defined text after [!vcalc])
@@ -1778,8 +1831,45 @@ class VCalcSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
+        // Appearance Section
+        containerEl.createEl('h3', { text: 'Appearance' });
+
+        new Setting(containerEl)
+            .setName('Background Style')
+            .setDesc('Control the background opacity of VCalc blocks')
+            .addDropdown(dropdown => dropdown
+                .addOption('default', 'Default')
+                .addOption('subtle', 'Subtle')
+                .addOption('solid', 'Solid')
+                .addOption('transparent', 'Transparent')
+                .setValue(this.plugin.settings.backgroundStyle)
+                .onChange(async (value) => {
+                    this.plugin.settings.backgroundStyle = value as 'default' | 'transparent' | 'subtle' | 'solid';
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Compact Mode')
+            .setDesc('Reduce padding and margins for a more compact layout')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.compactMode)
+                .onChange(async (value) => {
+                    this.plugin.settings.compactMode = value;
+                    await this.plugin.saveSettings();
+                }));
+
         // Color Palette Info
         containerEl.createEl('h3', { text: 'Variable Set Colors' });
+        
+        new Setting(containerEl)
+            .setName('Sync Accent with VSet Color')
+            .setDesc('Match the callout accent (left border and title) color to the variable set color. Can also be set per-block with "accent:vset" or "accent:default".')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.syncAccentWithVset)
+                .onChange(async (value) => {
+                    this.plugin.settings.syncAccentWithVset = value;
+                    await this.plugin.saveSettings();
+                }));
         
         const colorInfo = containerEl.createEl('div', { cls: 'vcalc-color-info' });
         colorInfo.createEl('p', { 

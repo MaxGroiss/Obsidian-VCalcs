@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CalcBlocks Preview</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .calculation-block {
+            background: rgba(138, 180, 248, 0.1);
+            border-left: 4px solid rgb(138, 180, 248);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+        .calc-title {
+            color: rgb(138, 180, 248);
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .calc-title::before {
+            content: "📐";
+        }
+        .run-btn {
+            margin-left: auto;
+            padding: 4px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+            border: 1px solid rgba(138, 180, 248, 0.5);
+            background: rgba(138, 180, 248, 0.2);
+            color: rgb(138, 180, 248);
+            cursor: pointer;
+        }
+        .code-block {
+            background: #2d2d2d;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Fira Code', 'Monaco', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        .code-block .keyword { color: #c586c0; }
+        .code-block .number { color: #b5cea8; }
+        .code-block .function { color: #dcdcaa; }
+        .code-block .comment { color: #6a9955; }
+        .code-block .variable { color: #9cdcfe; }
+        
+        .latex-output {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(138, 180, 248, 0.3);
+            text-align: center;
+        }
+        .latex-source {
+            background: #2d2d2d;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #ce9178;
+            margin-top: 12px;
+            white-space: pre-wrap;
+            text-align: left;
+        }
+        h2 { color: #569cd6; border-bottom: 1px solid #333; padding-bottom: 8px; }
+    </style>
+</head>
+<body>
+    <h1>🧮 CalcBlocks Preview</h1>
+    
+    <h2>Example 1: Basic Calculation</h2>
+    <div class="calculation-block">
+        <div class="calc-title">
+            Calculation
+            <button class="run-btn">Run</button>
+        </div>
+        <div class="code-block">
+<span class="variable">x</span> = <span class="number">5</span>
+<span class="variable">y</span> = <span class="number">10</span>
+<span class="variable">z</span> = <span class="variable">x</span> + <span class="variable">y</span>
+        </div>
+        <div class="latex-output">
+            $$
+            \begin{aligned}
+            x &= 5\\
+            y &= 10\\[10pt]
+            z &= x + y = 5 + 10 = 15
+            \end{aligned}
+            $$
+        </div>
+        <details>
+            <summary>LaTeX Source</summary>
+            <div class="latex-source">\begin{aligned}
+x &= 5\\
+y &= 10\\[10pt]
+z &= x + y = 5 + 10 = 15
+\end{aligned}</div>
+        </details>
+    </div>
+
+    <h2>Example 2: Electrical Engineering - Impedance</h2>
+    <div class="calculation-block">
+        <div class="calc-title">
+            Calculation
+            <button class="run-btn">Run</button>
+        </div>
+        <div class="code-block">
+<span class="variable">rho_S</span> = <span class="number">0.8</span>
+<span class="variable">M_S</span> = <span class="number">0.3</span>
+<span class="variable">Gamma_Load</span> = <span class="number">0.5</span>
+<span class="variable">d</span> = <span class="function">sqrt</span>((<span class="variable">rho_S</span> - <span class="function">abs</span>(<span class="variable">M_S</span>)) / <span class="function">abs</span>(<span class="variable">Gamma_Load</span>))
+        </div>
+        <div class="latex-output">
+            $$
+            \begin{aligned}
+            \rho_{S} &= 0.8\\
+            M_{S} &= 0.3\\
+            \Gamma_{Load} &= 0.5\\[10pt]
+            d &= \sqrt{\frac{\rho_{S} - \left|M_{S}\right|}{\left|\Gamma_{Load}\right|}} = \sqrt{\frac{0.8 - \left|0.3\right|}{\left|0.5\right|}} = 1
+            \end{aligned}
+            $$
+        </div>
+    </div>
+
+    <h2>Example 3: With Print Statements (Ignored)</h2>
+    <div class="calculation-block">
+        <div class="calc-title">
+            Calculation
+            <button class="run-btn">Run</button>
+        </div>
+        <div class="code-block">
+<span class="keyword">import</span> math  <span class="comment"># ignored</span>
+<span class="function">print</span>(<span class="string">'starting'</span>)  <span class="comment"># ignored</span>
+
+<span class="variable">R</span> = <span class="number">100</span>
+<span class="variable">C</span> = <span class="number">0.001</span>
+<span class="variable">f</span> = <span class="number">1000</span>
+<span class="variable">omega</span> = <span class="number">2</span> * <span class="variable">pi</span> * <span class="variable">f</span>
+<span class="variable">X_C</span> = <span class="number">1</span> / (<span class="variable">omega</span> * <span class="variable">C</span>)
+
+<span class="function">print</span>(<span class="string">f'Done: {X_C}'</span>)  <span class="comment"># ignored</span>
+        </div>
+        <div class="latex-output">
+            $$
+            \begin{aligned}
+            R &= 100\\
+            C &= 0.001\\
+            f &= 1000\\[10pt]
+            \omega &= 2 \cdot \pi \cdot f = 2 \cdot 3.14159 \cdot 1000 = 6283.19\\[10pt]
+            X_{C} &= \frac{1}{\omega \cdot C} = \frac{1}{6283.19 \cdot 0.001} = 0.159155
+            \end{aligned}
+            $$
+        </div>
+    </div>
+
+    <h2>How it Works</h2>
+    <p>The CalcBlocks plugin:</p>
+    <ol>
+        <li>Parses your Python code using AST (Abstract Syntax Tree)</li>
+        <li>Extracts only assignment statements (ignores print, import, etc.)</li>
+        <li>Converts expressions to LaTeX with symbolic → substitution → result format</li>
+        <li>Outputs native Obsidian LaTeX that you can click to edit</li>
+    </ol>
+
+</body>
+</html>

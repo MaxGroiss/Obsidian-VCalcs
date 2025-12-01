@@ -1,0 +1,350 @@
+/* VCalc Plugin Styles */
+
+/* Style the vcalc callout */
+.callout[data-callout="vcalc"] {
+    --callout-color: 138, 180, 248;
+    --callout-icon: lucide-calculator;
+    background-color: rgba(var(--callout-color), 0.1);
+    border-left: 4px solid rgb(var(--callout-color));
+}
+
+.callout[data-callout="vcalc"] .callout-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.callout[data-callout="vcalc"] .callout-title-inner {
+    font-weight: 600;
+}
+
+/* Button group */
+.calc-btn-group {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* VSet badge */
+.calc-vset-badge {
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 10px;
+    background-color: rgba(100, 200, 150, 0.2);
+    color: rgb(100, 200, 150);
+    border: 1px solid rgba(100, 200, 150, 0.4);
+    font-family: var(--font-monospace);
+}
+
+/* Common button styles */
+.calc-run-btn,
+.calc-toggle-btn,
+.calc-copy-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: 1px solid rgba(var(--callout-color), 0.5);
+    background-color: rgba(var(--callout-color), 0.15);
+    color: rgb(var(--callout-color));
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: var(--font-interface);
+}
+
+.calc-run-btn:hover,
+.calc-toggle-btn:hover,
+.calc-copy-btn:hover {
+    background-color: rgba(var(--callout-color), 0.3);
+    border-color: rgb(var(--callout-color));
+}
+
+.calc-run-btn:active,
+.calc-toggle-btn:active,
+.calc-copy-btn:active {
+    transform: scale(0.95);
+}
+
+/* Toggle button active state */
+.calc-toggle-btn.calc-btn-active {
+    background-color: rgba(var(--callout-color), 0.4);
+    border-color: rgb(var(--callout-color));
+}
+
+/* Hidden code block */
+.callout[data-callout="vcalc"] pre.calc-hidden {
+    display: none;
+}
+
+/* Code block inside vcalc */
+.callout[data-callout="vcalc"] pre {
+    background-color: var(--code-background);
+    border-radius: 6px;
+    margin: 8px 0;
+}
+
+.callout[data-callout="vcalc"] code {
+    font-family: var(--font-monospace);
+    font-size: 14px;
+}
+
+/* Output area */
+.calc-output {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(var(--callout-color), 0.3);
+}
+
+.calc-math-wrapper {
+    text-align: center;
+    padding: 12px 0;
+}
+
+.calc-math-wrapper .math-block,
+.calc-math-wrapper mjx-container {
+    font-size: 1.1em;
+}
+
+/* Collapsible LaTeX source */
+.calc-latex-source {
+    margin-top: 12px;
+    font-size: 13px;
+}
+
+.calc-latex-source summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 4px 0;
+    user-select: none;
+}
+
+.calc-latex-source summary:hover {
+    color: var(--text-normal);
+}
+
+.calc-source-content {
+    margin-top: 8px;
+}
+
+.calc-source-content pre {
+    background-color: var(--code-background);
+    border-radius: 6px;
+    padding: 12px;
+    overflow-x: auto;
+    margin: 0 0 8px 0;
+}
+
+.calc-source-content code {
+    font-family: var(--font-monospace);
+    font-size: 12px;
+    color: var(--code-normal);
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.calc-copy-btn {
+    font-size: 11px;
+    padding: 3px 8px;
+}
+
+/* Loading state */
+.calc-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    color: var(--text-muted);
+}
+
+.calc-loading::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    margin-left: 8px;
+    border: 2px solid transparent;
+    border-top-color: rgb(var(--callout-color));
+    border-radius: 50%;
+    animation: calc-spin 1s linear infinite;
+}
+
+@keyframes calc-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Error state */
+.calc-error {
+    color: var(--text-error);
+    background-color: rgba(255, 0, 0, 0.1);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+/* =====================================================
+   SIDEBAR - VCalc Variables View
+   ===================================================== */
+
+.vcalc-sidebar-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.vcalc-sidebar-header h4 {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+.vcalc-filename {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--font-monospace);
+}
+
+/* VSet Tabs */
+.vcalc-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    flex-wrap: wrap;
+}
+
+.vcalc-tab {
+    padding: 4px 12px;
+    font-size: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-secondary);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: var(--font-monospace);
+}
+
+.vcalc-tab:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.vcalc-tab-active {
+    background-color: rgba(100, 200, 150, 0.2);
+    color: rgb(100, 200, 150);
+    border-color: rgba(100, 200, 150, 0.4);
+}
+
+/* Variables list */
+.vcalc-vars-list {
+    padding: 8px 12px;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+.vcalc-var-item {
+    padding: 8px;
+    margin-bottom: 4px;
+    background-color: var(--background-secondary);
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.vcalc-var-header {
+    font-family: var(--font-monospace);
+    font-size: 13px;
+}
+
+.vcalc-var-name {
+    color: var(--text-accent);
+    font-weight: 500;
+}
+
+.vcalc-var-equals {
+    color: var(--text-muted);
+}
+
+.vcalc-var-value {
+    color: var(--text-normal);
+}
+
+.vcalc-var-source {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    padding-left: 8px;
+}
+
+/* No variables message */
+.vcalc-no-vars {
+    padding: 16px;
+    color: var(--text-muted);
+    font-size: 13px;
+    text-align: center;
+}
+
+/* Clear button */
+.vcalc-clear-btn {
+    margin: 12px;
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-secondary);
+    color: var(--text-muted);
+    cursor: pointer;
+    width: calc(100% - 24px);
+    transition: all 0.15s ease;
+}
+
+.vcalc-clear-btn:hover {
+    background-color: rgba(255, 100, 100, 0.1);
+    border-color: rgba(255, 100, 100, 0.3);
+    color: rgb(255, 100, 100);
+}
+
+/* Dark theme adjustments */
+.theme-dark .callout[data-callout="vcalc"] {
+    --callout-color: 138, 180, 248;
+}
+
+.theme-dark .calc-vset-badge {
+    background-color: rgba(100, 200, 150, 0.15);
+}
+
+/* Light theme adjustments */
+.theme-light .callout[data-callout="vcalc"] {
+    --callout-color: 25, 118, 210;
+}
+
+.theme-light .calc-vset-badge {
+    background-color: rgba(50, 150, 100, 0.15);
+    color: rgb(50, 150, 100);
+    border-color: rgba(50, 150, 100, 0.4);
+}
+
+.theme-light .vcalc-tab-active {
+    background-color: rgba(50, 150, 100, 0.15);
+    color: rgb(50, 150, 100);
+    border-color: rgba(50, 150, 100, 0.4);
+}
+
+/* Print/Export styling */
+@media print {
+    .calc-btn-group {
+        display: none;
+    }
+    
+    .calc-latex-source {
+        display: none;
+    }
+    
+    .callout[data-callout="vcalc"] {
+        break-inside: avoid;
+    }
+    
+    .callout[data-callout="vcalc"] pre.calc-hidden {
+        display: none;
+    }
+}

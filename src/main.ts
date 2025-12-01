@@ -219,69 +219,73 @@ export default class CalcBlocksPlugin extends Plugin {
 
     async saveBlockLatexToFile(callout: HTMLElement, sourcePath: string, blockTitle: string) {
         const latex = callout.getAttribute('data-vcalc-latex');
+        const blockIndex = callout.getAttribute('data-vcalc-index');
+        
         if (!latex) {
             new Notice('No LaTeX output to save. Run the block first.');
             return;
         }
 
-        const file = this.app.vault.getAbstractFileByPath(sourcePath);
-        if (!file || !(file instanceof this.app.vault.adapter.constructor)) {
-            // Get the file properly
-            const tfile = this.app.vault.getAbstractFileByPath(sourcePath);
-            if (!tfile) {
-                new Notice('Could not find file to save to.');
-                return;
-            }
+        if (blockIndex === null) {
+            new Notice('Could not identify the block. Please run it first.');
+            return;
         }
+
+        const targetIndex = parseInt(blockIndex, 10);
 
         try {
             // Read current file content
             let content = await this.app.vault.adapter.read(sourcePath);
             const lines = content.split('\n');
             
-            // Find the vcalc block with this title
-            let blockStart = -1;
-            let blockEnd = -1;
+            // Find the Nth vcalc block
+            let currentBlockIndex = -1;
             let codeBlockEnd = -1;
             let existingOutputStart = -1;
             let existingOutputEnd = -1;
+            let foundBlock = false;
             
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
                 
-                // Look for vcalc callout with matching title
-                if (line.match(/^>\s*\[!vcalc\]/i) && line.includes(blockTitle)) {
-                    blockStart = i;
-                }
-                
-                // Track when we're in a block
-                if (blockStart !== -1 && blockEnd === -1) {
-                    // Find end of code block (``` within callout)
-                    if (line.match(/^>\s*```\s*$/) && codeBlockEnd === -1 && i > blockStart) {
-                        codeBlockEnd = i;
-                    }
+                // Look for vcalc callout start
+                if (line.match(/^>\s*\[!vcalc\]/i)) {
+                    currentBlockIndex++;
                     
-                    // Check for existing output markers
-                    if (line.includes('<!-- vcalc-output -->')) {
-                        existingOutputStart = i;
-                    }
-                    if (line.includes('<!-- /vcalc-output -->')) {
-                        existingOutputEnd = i;
-                    }
-                    
-                    // Block ends when we hit a non-callout line
-                    if (!line.startsWith('>') && line.trim() !== '') {
-                        blockEnd = i;
+                    if (currentBlockIndex === targetIndex) {
+                        // This is our block! Find the code block end and any existing output
+                        foundBlock = true;
+                        
+                        for (let j = i + 1; j < lines.length; j++) {
+                            const nextLine = lines[j];
+                            
+                            // Find end of code block (closing ```)
+                            if (nextLine.match(/^>\s*```\s*$/) && codeBlockEnd === -1) {
+                                codeBlockEnd = j;
+                            }
+                            
+                            // Find existing output markers
+                            if (nextLine.includes('<!-- vcalc-output -->') && existingOutputStart === -1) {
+                                existingOutputStart = j;
+                            }
+                            if (nextLine.includes('<!-- /vcalc-output -->')) {
+                                existingOutputEnd = j;
+                            }
+                            
+                            // Stop at non-callout line or next vcalc block
+                            if (!nextLine.startsWith('>') && nextLine.trim() !== '') {
+                                break;
+                            }
+                            if (nextLine.match(/^>\s*\[!vcalc\]/i)) {
+                                break;
+                            }
+                        }
                         break;
                     }
                 }
             }
             
-            if (blockEnd === -1) {
-                blockEnd = lines.length;
-            }
-            
-            if (blockStart === -1 || codeBlockEnd === -1) {
+            if (!foundBlock || codeBlockEnd === -1) {
                 new Notice('Could not find the calculation block in file.');
                 return;
             }
@@ -296,12 +300,20 @@ export default class CalcBlocksPlugin extends Plugin {
                 '> <!-- /vcalc-output -->'
             ];
             
-            // Remove existing output if present
+            // Remove existing output if present (including any blank line before it)
             if (existingOutputStart !== -1 && existingOutputEnd !== -1) {
-                lines.splice(existingOutputStart, existingOutputEnd - existingOutputStart + 1);
-                // Adjust codeBlockEnd if needed
-                if (codeBlockEnd > existingOutputStart) {
-                    codeBlockEnd -= (existingOutputEnd - existingOutputStart + 1);
+                // Check if there's a blank callout line before the output
+                let removeStart = existingOutputStart;
+                if (removeStart > 0 && lines[removeStart - 1].match(/^>\s*$/)) {
+                    removeStart--;
+                }
+                
+                const removeCount = existingOutputEnd - removeStart + 1;
+                lines.splice(removeStart, removeCount);
+                
+                // Adjust codeBlockEnd if it was after the removed section
+                if (codeBlockEnd >= removeStart) {
+                    codeBlockEnd -= removeCount;
                 }
             }
             
@@ -343,6 +355,10 @@ export default class CalcBlocksPlugin extends Plugin {
         // Run each block in order
         for (let i = 0; i < callouts.length; i++) {
             const callout = callouts[i] as HTMLElement;
+            
+            // Assign block index
+            callout.setAttribute('data-vcalc-index', String(i));
+            
             const { code, vset } = this.parseVsetFromCodeBlock(callout);
             
             if (code.trim()) {
@@ -507,9 +523,20 @@ export default class CalcBlocksPlugin extends Plugin {
             runBtn.className = 'calc-run-btn';
             runBtn.textContent = 'Run';
             runBtn.addEventListener('click', async () => {
+                // Calculate block index by finding all vcalc callouts and our position
+                const allCallouts = document.querySelectorAll('.callout[data-callout="vcalc"]');
+                let blockIndex = -1;
+                for (let i = 0; i < allCallouts.length; i++) {
+                    if (allCallouts[i] === callout) {
+                        blockIndex = i;
+                        break;
+                    }
+                }
+                callout.setAttribute('data-vcalc-index', String(blockIndex));
+                
                 // Get the code fresh at click time (in case user edited it)
                 const { code: pythonCode, vset: currentVset } = this.parseVsetFromCodeBlock(callout);
-                console.log('CalcBlocks: Running code with vset:', currentVset, pythonCode);
+                console.log('CalcBlocks: Running block', blockIndex, 'with vset:', currentVset, pythonCode);
                 await this.executeAndRender(pythonCode, callout, context, currentVset);
             });
             btnGroup.appendChild(runBtn);
@@ -550,6 +577,35 @@ export default class CalcBlocksPlugin extends Plugin {
                 }
             }
             
+            // Check for existing saved output from the file (rendered by Obsidian)
+            // This would be any math block inside callout-content that's not in our .calc-output
+            const calloutContent = callout.querySelector('.callout-content');
+            if (calloutContent) {
+                // Find saved output markers or math blocks that aren't ours
+                const existingMathBlocks = calloutContent.querySelectorAll('.math-block, mjx-container');
+                existingMathBlocks.forEach((mathBlock) => {
+                    // Skip if it's inside our output container
+                    if (mathBlock.closest('.calc-output')) return;
+                    
+                    // Check if already marked as outdated
+                    const parent = mathBlock.parentElement;
+                    if (parent && parent.classList.contains('calc-saved-outdated')) return;
+                    
+                    // Wrap in outdated container
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'calc-saved-outdated';
+                    
+                    const badge = document.createElement('div');
+                    badge.className = 'calc-outdated-badge';
+                    badge.innerHTML = '⚠️ Saved output (outdated) - <em>click Save to update</em>';
+                    wrapper.appendChild(badge);
+                    
+                    // Move the math block into the wrapper
+                    mathBlock.parentNode?.insertBefore(wrapper, mathBlock);
+                    wrapper.appendChild(mathBlock);
+                });
+            }
+
             // Find or create the output container
             let outputContainer = callout.querySelector('.calc-output') as HTMLElement;
             if (!outputContainer) {
@@ -620,6 +676,11 @@ export default class CalcBlocksPlugin extends Plugin {
             saveBtn.addEventListener('click', async () => {
                 await this.saveBlockLatexToFile(callout, context.sourcePath, blockTitle);
                 saveBtn.textContent = 'Saved!';
+                
+                // Remove outdated markers after saving
+                const outdatedWrappers = callout.querySelectorAll('.calc-saved-outdated');
+                outdatedWrappers.forEach((wrapper) => wrapper.remove());
+                
                 setTimeout(() => { saveBtn.textContent = 'Save to File'; }, 2000);
             });
             btnContainer.appendChild(saveBtn);

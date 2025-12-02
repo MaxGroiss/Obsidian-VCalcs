@@ -4,13 +4,14 @@ import { Plugin, MarkdownPostProcessorContext, Notice, MarkdownView, MarkdownRen
 import { CalcBlocksSettings, VariableStore, VariableSet, VSetColorMap, VSetColor } from './types';
 
 // Constants
-import { VCALC_VIEW_TYPE, VSET_COLORS, DEFAULT_SETTINGS } from './constants';
+import { VCALC_VIEW_TYPE, VCALC_EDITOR_VIEW_TYPE, VCALC_ID_ATTRIBUTE, VSET_COLORS, DEFAULT_SETTINGS, generateVCalcId } from './constants';
 
 // Settings
 import { VCalcSettingTab } from './settings';
 
 // Views
 import { VCalcVariablesView } from './views/variables-view';
+import { VCalcEditorView } from './views/editor-view';
 
 // Stores
 import { 
@@ -48,15 +49,25 @@ export default class CalcBlocksPlugin extends Plugin {
     async onload() {
         await this.loadSettings();
 
-        // Register the sidebar view
+        // Register the sidebar views
         this.registerView(
             VCALC_VIEW_TYPE,
             (leaf) => new VCalcVariablesView(leaf, this)
+        );
+        
+        this.registerView(
+            VCALC_EDITOR_VIEW_TYPE,
+            (leaf) => new VCalcEditorView(leaf, this)
         );
 
         // Add ribbon icon for variable viewer
         this.addRibbonIcon('calculator', 'VCalc Variables', () => {
             this.activateVariablesView();
+        });
+        
+        // Add ribbon icon for editor
+        this.addRibbonIcon('code', 'VCalc Editor', () => {
+            this.activateEditorView();
         });
 
         // Register the callout post-processor for [!vcalc] blocks
@@ -86,7 +97,8 @@ export default class CalcBlocksPlugin extends Plugin {
             id: 'insert-calc-block',
             name: 'Insert VCalc Block',
             editorCallback: (editor) => {
-                const template = `> [!vcalc] Calculation\n> \`\`\`python\n> # {vset:main}\n> x = 5\n> y = 10\n> z = x + y\n> \`\`\`\n`;
+                const id = generateVCalcId();
+                const template = `> [!vcalc] Calculation\n> \`\`\`python\n> # vcalc: id=${id} vset=main\n> x = 5\n> y = 10\n> z = x + y\n> \`\`\`\n`;
                 editor.replaceSelection(template);
             }
         });
@@ -109,6 +121,15 @@ export default class CalcBlocksPlugin extends Plugin {
             name: 'Open Variables Panel',
             callback: () => {
                 this.activateVariablesView();
+            }
+        });
+
+        // Open editor panel
+        this.addCommand({
+            id: 'open-editor-panel',
+            name: 'Open Editor Panel',
+            callback: () => {
+                this.activateEditorView();
             }
         });
 
@@ -215,11 +236,32 @@ export default class CalcBlocksPlugin extends Plugin {
         }
     }
 
+    async activateEditorView() {
+        const leaves = this.app.workspace.getLeavesOfType(VCALC_EDITOR_VIEW_TYPE);
+        
+        if (leaves.length === 0) {
+            const rightLeaf = this.app.workspace.getRightLeaf(false);
+            if (rightLeaf) {
+                await rightLeaf.setViewState({
+                    type: VCALC_EDITOR_VIEW_TYPE,
+                    active: true
+                });
+            }
+        }
+        
+        const leaf = this.app.workspace.getLeavesOfType(VCALC_EDITOR_VIEW_TYPE)[0];
+        if (leaf) {
+            this.app.workspace.revealLeaf(leaf);
+        }
+    }
+
     refreshVariablesView() {
         const leaves = this.app.workspace.getLeavesOfType(VCALC_VIEW_TYPE);
         for (const leaf of leaves) {
-            const view = leaf.view as VCalcVariablesView;
-            view.refresh();
+            const view = leaf.view;
+            if (view && typeof (view as any).refresh === 'function') {
+                (view as VCalcVariablesView).refresh();
+            }
         }
     }
 
@@ -237,7 +279,12 @@ export default class CalcBlocksPlugin extends Plugin {
         if (!codeBlock) return;
 
         // Parse options from code block
-        const { vset, hidden, accentVset, bgStyle, compact } = parseVsetFromCodeBlock(callout);
+        const { id, vset, hidden, accentVset, bgStyle, compact } = parseVsetFromCodeBlock(callout);
+        
+        // Apply block ID to DOM for reliable lookup
+        if (id) {
+            callout.setAttribute(VCALC_ID_ATTRIBUTE, id);
+        }
         
         // Apply hidden state
         const preEl = callout.querySelector('pre');

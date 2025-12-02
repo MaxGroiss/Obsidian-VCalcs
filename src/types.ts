@@ -43,6 +43,7 @@ export interface CalcBlocksSettings {
 
 // Parsed block options
 export interface BlockOptions {
+    id: string | null;
     code: string;
     vset: string | null;
     hidden: boolean;

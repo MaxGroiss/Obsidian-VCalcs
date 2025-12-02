@@ -481,3 +481,260 @@
     border: 1px solid rgba(var(--sample-color), 0.4);
     font-family: var(--font-monospace);
 }
+
+/* =====================================================
+   VCALC EDITOR VIEW
+   ===================================================== */
+
+.vcalc-editor-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0;
+}
+
+.vcalc-editor-header {
+    padding: 12px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    background-color: var(--background-secondary);
+}
+
+.vcalc-editor-selector-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.vcalc-editor-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.vcalc-editor-select {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 13px;
+    border-radius: 4px;
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    cursor: pointer;
+}
+
+.vcalc-editor-select:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+}
+
+.vcalc-editor-refresh-btn {
+    padding: 4px 8px !important;
+    font-size: 14px !important;
+    min-width: auto !important;
+}
+
+.vcalc-editor-codemirror {
+    flex: 1;
+    overflow: hidden;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.vcalc-editor-codemirror .cm-editor {
+    height: 100%;
+}
+
+.vcalc-editor-codemirror .cm-scroller {
+    font-family: var(--font-monospace);
+}
+
+.vcalc-editor-codemirror .cm-gutters {
+    background-color: var(--background-secondary);
+    border-right: 1px solid var(--background-modifier-border);
+}
+
+.vcalc-editor-codemirror .cm-activeLineGutter {
+    background-color: var(--background-modifier-hover);
+}
+
+.vcalc-editor-codemirror .cm-activeLine {
+    background-color: rgba(var(--interactive-accent-rgb), 0.05);
+}
+
+.vcalc-editor-buttons {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background-color: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.vcalc-editor-btn {
+    padding: 6px 16px;
+    font-size: 13px;
+    border-radius: 4px;
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: var(--font-interface);
+}
+
+.vcalc-editor-btn:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.vcalc-editor-btn:active {
+    transform: scale(0.98);
+}
+
+.vcalc-editor-run-btn {
+    background-color: rgba(100, 200, 150, 0.15);
+    border-color: rgba(100, 200, 150, 0.4);
+    color: rgb(100, 200, 150);
+}
+
+.vcalc-editor-run-btn:hover {
+    background-color: rgba(100, 200, 150, 0.25);
+    border-color: rgba(100, 200, 150, 0.6);
+}
+
+.vcalc-editor-save-btn {
+    background-color: rgba(100, 150, 255, 0.15);
+    border-color: rgba(100, 150, 255, 0.4);
+    color: rgb(100, 150, 255);
+}
+
+.vcalc-editor-save-btn:hover {
+    background-color: rgba(100, 150, 255, 0.25);
+    border-color: rgba(100, 150, 255, 0.6);
+}
+
+.vcalc-editor-clear-btn {
+    background-color: rgba(255, 120, 120, 0.15);
+    border-color: rgba(255, 120, 120, 0.4);
+    color: rgb(255, 120, 120);
+}
+
+.vcalc-editor-clear-btn:hover {
+    background-color: rgba(255, 120, 120, 0.25);
+    border-color: rgba(255, 120, 120, 0.6);
+}
+
+.vcalc-editor-status {
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+    background-color: var(--background-secondary);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+/* CodeMirror theme overrides for dark mode */
+.theme-dark .vcalc-editor-codemirror .cm-gutters {
+    background-color: var(--background-secondary);
+}
+
+.theme-dark .vcalc-editor-codemirror .cm-content {
+    caret-color: var(--text-normal);
+}
+
+/* Autocomplete styling */
+.vcalc-editor-codemirror .cm-tooltip-autocomplete {
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.vcalc-editor-codemirror .cm-tooltip-autocomplete > ul {
+    font-family: var(--font-monospace);
+    font-size: 13px;
+}
+
+.vcalc-editor-codemirror .cm-tooltip-autocomplete > ul > li {
+    padding: 4px 8px;
+}
+
+.vcalc-editor-codemirror .cm-tooltip-autocomplete > ul > li[aria-selected] {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.vcalc-editor-codemirror .cm-completionIcon {
+    margin-right: 6px;
+    opacity: 0.7;
+}
+
+.vcalc-editor-codemirror .cm-completionDetail {
+    margin-left: 8px;
+    opacity: 0.6;
+    font-style: italic;
+}
+
+/* =====================================================
+   VCALC EDITOR - DIRTY INDICATOR
+   ===================================================== */
+
+.vcalc-editor-dirty-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: transparent;
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.vcalc-editor-dirty-indicator.vcalc-editor-dirty-visible {
+    background-color: rgb(255, 180, 100);
+    box-shadow: 0 0 4px rgba(255, 180, 100, 0.5);
+}
+
+/* =====================================================
+   VCALC EDITOR - DOM MIRROR (in note)
+   ===================================================== */
+
+.vcalc-editor-mirror {
+    border: 2px dashed rgba(100, 180, 255, 0.4);
+    border-radius: 6px;
+    background-color: rgba(100, 180, 255, 0.05);
+    overflow: hidden;
+}
+
+.vcalc-editor-mirror-indicator {
+    padding: 6px 12px;
+    font-size: 12px;
+    color: rgb(100, 180, 255);
+    background-color: rgba(100, 180, 255, 0.1);
+    border-bottom: 1px dashed rgba(100, 180, 255, 0.3);
+    font-family: var(--font-interface);
+}
+
+.vcalc-editor-mirror-code {
+    margin: 0;
+    padding: 12px;
+    background-color: transparent;
+    font-family: var(--font-monospace);
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: var(--text-muted);
+}
+
+.vcalc-editor-mirror-code code {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+    color: inherit;
+}
+
+/* Dark mode adjustments */
+.theme-dark .vcalc-editor-mirror {
+    border-color: rgba(100, 180, 255, 0.3);
+    background-color: rgba(100, 180, 255, 0.03);
+}
+
+.theme-dark .vcalc-editor-mirror-indicator {
+    background-color: rgba(100, 180, 255, 0.08);
+}

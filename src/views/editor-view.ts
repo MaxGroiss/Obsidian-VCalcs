@@ -39,7 +39,11 @@ export class VCalcEditorView extends ItemView {
     private isUpdatingEditor: boolean = false;
     private isDirty: boolean = false;
     private editorContent: string = '';
-    
+
+    // File write lock to prevent race conditions
+    private isWriting: boolean = false;
+    private writeQueue: Array<() => Promise<void>> = [];
+
     // Timers
     private idleTimer: NodeJS.Timeout | null = null;
     private mirrorCheckInterval: NodeJS.Timeout | null = null;
@@ -503,7 +507,7 @@ export class VCalcEditorView extends ItemView {
         }
 
         if (this.isDirty) {
-            await this.writeToFile();
+            await this.safeWriteToFile();
         }
 
         this.removeAllMirrors();
@@ -545,7 +549,7 @@ export class VCalcEditorView extends ItemView {
 
         if (this.idleTimer) clearTimeout(this.idleTimer);
         this.idleTimer = setTimeout(() => {
-            this.writeToFile();
+            this.safeWriteToFile();
         }, IDLE_SAVE_DELAY);
     }
 
@@ -557,6 +561,38 @@ export class VCalcEditorView extends ItemView {
 
     // ==================== File Operations ====================
 
+    /**
+     * Enqueue a write operation to prevent race conditions
+     */
+    private async safeWriteToFile(): Promise<boolean> {
+        return new Promise((resolve) => {
+            this.writeQueue.push(async () => {
+                const result = await this.writeToFile();
+                resolve(result);
+            });
+            this.processWriteQueue();
+        });
+    }
+
+    /**
+     * Process the write queue sequentially
+     */
+    private async processWriteQueue() {
+        if (this.isWriting || this.writeQueue.length === 0) return;
+
+        this.isWriting = true;
+        while (this.writeQueue.length > 0) {
+            const write = this.writeQueue.shift();
+            if (write) {
+                await write();
+            }
+        }
+        this.isWriting = false;
+    }
+
+    /**
+     * Internal write method - should only be called through safeWriteToFile
+     */
     private async writeToFile(): Promise<boolean> {
         if (!this.selectedBlockId && this.selectedBlockIndex < 0) return false;
 
@@ -638,7 +674,7 @@ export class VCalcEditorView extends ItemView {
             this.idleTimer = null;
         }
 
-        if (await this.writeToFile()) {
+        if (await this.safeWriteToFile()) {
             new Notice('Code saved to file');
         }
     }
@@ -656,7 +692,7 @@ export class VCalcEditorView extends ItemView {
             clearTimeout(this.idleTimer);
             this.idleTimer = null;
         }
-        await this.writeToFile();
+        await this.safeWriteToFile();
 
         // Wait for Obsidian to process
         await new Promise(resolve => setTimeout(resolve, 250));

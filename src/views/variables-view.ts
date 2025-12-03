@@ -1,14 +1,7 @@
-import { ItemView, WorkspaceLeaf, App } from 'obsidian';
-import { VariableStore, VSetColor } from '../types';
+import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { VariablesViewPlugin } from '../types';
 import { VCALC_VIEW_TYPE } from '../constants';
-
-// Interface for what we need from the plugin
-export interface VariablesViewPlugin {
-    app: App;
-    variableStore: VariableStore;
-    getVsetColor(notePath: string, vsetName: string): VSetColor;
-    clearNoteVariables(notePath: string): void;
-}
+import { variableValueToString } from '../utils/type-guards';
 
 export class VCalcVariablesView extends ItemView {
     private plugin: VariablesViewPlugin;
@@ -104,9 +97,9 @@ export class VCalcVariablesView extends ItemView {
             const varHeader = varEl.createEl('div', { cls: 'vcalc-var-header' });
             varHeader.createEl('span', { text: varName, cls: 'vcalc-var-name' });
             varHeader.createEl('span', { text: ' = ', cls: 'vcalc-var-equals' });
-            varHeader.createEl('span', { 
-                text: String(varInfo.value), 
-                cls: 'vcalc-var-value' 
+            varHeader.createEl('span', {
+                text: variableValueToString(varInfo.value),
+                cls: 'vcalc-var-value'
             });
             
             // Source block

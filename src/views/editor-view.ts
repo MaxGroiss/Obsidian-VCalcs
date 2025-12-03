@@ -1,11 +1,11 @@
-import { ItemView, WorkspaceLeaf, App, MarkdownView, Notice } from 'obsidian';
+import { ItemView, WorkspaceLeaf, MarkdownView, Notice } from 'obsidian';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, ViewUpdate } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { python } from '@codemirror/lang-python';
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language';
 import { autocompletion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import { VariableStore, CalcBlocksSettings } from '../types';
+import { EditorViewPlugin } from '../types';
 import { VCALC_EDITOR_VIEW_TYPE, VCALC_ID_ATTRIBUTE, MATH_FUNCTIONS, MATH_CONSTANTS, GREEK_LETTERS, generateVCalcId } from '../constants';
 import { parseVsetFromCodeBlock, buildOptionsLine } from '../callout/parser';
 
@@ -16,14 +16,6 @@ interface BlockInfo {
     title: string;
     vset: string | null;
     code: string;
-}
-
-// Plugin interface
-export interface EditorViewPlugin {
-    app: App;
-    settings: CalcBlocksSettings;
-    variableStore: VariableStore;
-    getVariables(notePath: string, vset: string): any;
 }
 
 // Constants
@@ -161,12 +153,14 @@ export class VCalcEditorView extends ItemView {
                 const activeFile = this.plugin.app.workspace.getActiveFile();
                 if (activeFile) {
                     const vars = this.plugin.getVariables(activeFile.path, this.selectedBlockVset);
-                    for (const varName of Object.keys(vars)) {
-                        options.push({ 
-                            label: varName, 
-                            type: 'variable', 
-                            detail: `${this.selectedBlockVset}: ${vars[varName].value}` 
-                        });
+                    if (vars) {
+                        for (const varName of Object.keys(vars)) {
+                            options.push({
+                                label: varName,
+                                type: 'variable',
+                                detail: `${this.selectedBlockVset}: ${vars[varName].value}`
+                            });
+                        }
                     }
                 }
             }

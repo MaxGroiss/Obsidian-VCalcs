@@ -7,9 +7,20 @@
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
   },
-  "keywords": ["obsidian", "plugin", "latex", "python", "calculations"],
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "latex",
+    "python",
+    "calculations"
+  ],
   "devDependencies": {
+    "@codemirror/autocomplete": "^6.20.0",
+    "@codemirror/commands": "^6.10.0",
     "@codemirror/lang-python": "^6.1.6",
+    "@codemirror/language": "^6.11.3",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.38.8",
     "@types/node": "^20.10.0",
     "builtin-modules": "^3.3.0",
     "esbuild": "^0.19.8",

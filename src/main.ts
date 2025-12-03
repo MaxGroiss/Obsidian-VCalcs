@@ -38,11 +38,11 @@ import {
 
 
 export default class CalcBlocksPlugin extends Plugin {
-    settings: CalcBlocksSettings;
-    
+    settings!: CalcBlocksSettings; // Initialized in onload via loadSettings()
+
     // Variable storage (in-memory, cleared on note close)
     public variableStore: VariableStore = {};
-    
+
     // VSet color assignments per note (tracks order of appearance)
     public vsetColors: VSetColorMap = {};
 

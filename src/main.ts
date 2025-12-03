@@ -4,7 +4,7 @@ import { Plugin, MarkdownPostProcessorContext, Notice, MarkdownView, MarkdownRen
 import { CalcBlocksSettings, VariableStore, VariableSet, VSetColorMap, VSetColor } from './types';
 
 // Constants
-import { VCALC_VIEW_TYPE, VCALC_EDITOR_VIEW_TYPE, VCALC_ID_ATTRIBUTE, VSET_COLORS, DEFAULT_SETTINGS, generateVCalcId } from './constants';
+import { VCALC_VIEW_TYPE, VCALC_EDITOR_VIEW_TYPE, VCALC_ID_ATTRIBUTE, VSET_COLORS, DEFAULT_SETTINGS, generateVCalcId, TIMING } from './constants';
 
 // Settings
 import { VCalcSettingTab } from './settings';
@@ -556,7 +556,7 @@ export default class CalcBlocksPlugin extends Plugin {
                     }
                     await navigator.clipboard.writeText(`$$\n${latex}\n$$`);
                     copyBtn.textContent = 'Copied!';
-                    setTimeout(() => { copyBtn.textContent = 'Copy LaTeX'; }, 2000);
+                    setTimeout(() => { copyBtn.textContent = 'Copy LaTeX'; }, TIMING.UI_FEEDBACK_RESET_MS);
                 } catch (error) {
                     console.error('VCalc: Error copying to clipboard:', error);
                     new Notice(`Error copying to clipboard: ${getErrorMessage(error)}`);
@@ -577,7 +577,7 @@ export default class CalcBlocksPlugin extends Plugin {
                     const outdatedWrappers = callout.querySelectorAll('.calc-saved-outdated');
                     outdatedWrappers.forEach((wrapper) => wrapper.remove());
 
-                    setTimeout(() => { saveBtn.textContent = 'Save to File'; }, 2000);
+                    setTimeout(() => { saveBtn.textContent = 'Save to File'; }, TIMING.UI_FEEDBACK_RESET_MS);
                 } catch (error) {
                     console.error('VCalc: Error saving to file:', error);
                     new Notice(`Error saving to file: ${getErrorMessage(error)}`);
@@ -641,7 +641,7 @@ export default class CalcBlocksPlugin extends Plugin {
                     } as unknown as MarkdownPostProcessorContext;
                     
                     await this.executeAndRender(code, callout, context, vset);
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    await new Promise(resolve => setTimeout(resolve, TIMING.INTER_BLOCK_DELAY_MS));
                 } catch (error) {
                     console.error(`Error running block ${i + 1}:`, error);
                 }
@@ -672,7 +672,7 @@ export default class CalcBlocksPlugin extends Plugin {
                 const blockTitle = getCalloutTitle(callout as HTMLElement);
                 await saveBlockLatexToFile(this.app, callout as HTMLElement, file.path, blockTitle);
                 savedCount++;
-                await new Promise(resolve => setTimeout(resolve, 50));
+                await new Promise(resolve => setTimeout(resolve, TIMING.BLOCK_SAVE_DELAY_MS));
             }
         }
         

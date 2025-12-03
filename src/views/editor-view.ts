@@ -6,7 +6,7 @@ import { python } from '@codemirror/lang-python';
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language';
 import { autocompletion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { EditorViewPlugin } from '../types';
-import { VCALC_EDITOR_VIEW_TYPE, VCALC_ID_ATTRIBUTE, MATH_FUNCTIONS, MATH_CONSTANTS, GREEK_LETTERS, generateVCalcId } from '../constants';
+import { VCALC_EDITOR_VIEW_TYPE, VCALC_ID_ATTRIBUTE, MATH_FUNCTIONS, MATH_CONSTANTS, GREEK_LETTERS, generateVCalcId, TIMING, RETRY_LIMITS } from '../constants';
 import { parseVsetFromCodeBlock, buildOptionsLine } from '../callout/parser';
 
 // Block info with ID as primary identifier
@@ -19,8 +19,6 @@ interface BlockInfo {
 }
 
 // Constants
-const MIRROR_CHECK_INTERVAL = 300;
-const IDLE_SAVE_DELAY = 2500;
 const MIRROR_CLASS = 'vcalc-editor-mirror';
 
 export class VCalcEditorView extends ItemView {
@@ -346,7 +344,7 @@ export class VCalcEditorView extends ItemView {
         this.stopMirrorCheck();
         this.mirrorCheckInterval = setInterval(() => {
             this.ensureMirrorExists();
-        }, MIRROR_CHECK_INTERVAL);
+        }, TIMING.MIRROR_CHECK_INTERVAL_MS);
     }
 
     private stopMirrorCheck() {
@@ -386,18 +384,18 @@ export class VCalcEditorView extends ItemView {
         }
 
         const container = this.getMarkdownContainer();
-        
-        // Retry if container not ready yet (up to 3 times with 100ms delay)
-        if (!container && retryCount < 3) {
-            setTimeout(() => this.fullRefresh(retryCount + 1), 100);
+
+        // Retry if container not ready yet
+        if (!container && retryCount < RETRY_LIMITS.MAX_BLOCK_RETRIES) {
+            setTimeout(() => this.fullRefresh(retryCount + 1), TIMING.BLOCK_RETRY_DELAY_MS);
             return;
         }
 
         const callouts = this.getAllCallouts();
-        
+
         // Retry if no callouts but we expect some (container exists but maybe not rendered yet)
-        if (callouts.length === 0 && container && retryCount < 3) {
-            setTimeout(() => this.fullRefresh(retryCount + 1), 100);
+        if (callouts.length === 0 && container && retryCount < RETRY_LIMITS.MAX_BLOCK_RETRIES) {
+            setTimeout(() => this.fullRefresh(retryCount + 1), TIMING.BLOCK_RETRY_DELAY_MS);
             return;
         }
         
@@ -550,7 +548,7 @@ export class VCalcEditorView extends ItemView {
         if (this.idleTimer) clearTimeout(this.idleTimer);
         this.idleTimer = setTimeout(() => {
             this.safeWriteToFile();
-        }, IDLE_SAVE_DELAY);
+        }, TIMING.IDLE_SAVE_DELAY_MS);
     }
 
     private updateDirtyIndicator() {

@@ -46,6 +46,33 @@ export const VSET_COLORS: VSetColor[] = [
     { name: 'red', rgb: '255, 120, 120' },
 ];
 
+// Timing constants (in milliseconds)
+export const TIMING = {
+    /** Delay between running blocks in "Run All" to prevent overwhelming the UI */
+    INTER_BLOCK_DELAY_MS: 100,
+
+    /** Delay before saving block to file to batch rapid changes */
+    BLOCK_SAVE_DELAY_MS: 50,
+
+    /** Duration to show UI feedback (e.g., "Copied!" button text) */
+    UI_FEEDBACK_RESET_MS: 2000,
+
+    /** Delay before auto-saving editor changes to prevent excessive writes */
+    IDLE_SAVE_DELAY_MS: 2500,
+
+    /** Interval for checking if editor mirror still exists in DOM */
+    MIRROR_CHECK_INTERVAL_MS: 300,
+
+    /** Delay before retrying to find blocks in DOM (during initialization) */
+    BLOCK_RETRY_DELAY_MS: 100,
+} as const;
+
+// Retry limits
+export const RETRY_LIMITS = {
+    /** Maximum number of retries when waiting for blocks to appear in DOM */
+    MAX_BLOCK_RETRIES: 3,
+} as const;
+
 // Default plugin settings
 export const DEFAULT_SETTINGS: CalcBlocksSettings = {
     showSymbolic: true,

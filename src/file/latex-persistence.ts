@@ -1,4 +1,5 @@
 import { App, Notice, MarkdownView } from 'obsidian';
+import { getErrorMessage } from '../utils/type-guards';
 
 /**
  * Save LaTeX output for a specific block to the file.
@@ -117,7 +118,7 @@ export async function saveBlockLatexToFile(
         new Notice(`LaTeX saved for "${blockTitle}"`);
     } catch (error) {
         console.error('Error saving LaTeX to file:', error);
-        new Notice(`Error saving: ${(error as Error).message}`);
+        new Notice(`Error saving LaTeX: ${getErrorMessage(error)}`);
     }
 }
 
@@ -174,7 +175,7 @@ export async function clearAllSavedLatex(app: App): Promise<void> {
         }
     } catch (error) {
         console.error('Error clearing saved LaTeX:', error);
-        new Notice(`Error: ${(error as Error).message}`);
+        new Notice(`Error clearing LaTeX: ${getErrorMessage(error)}`);
     }
 }
 
@@ -242,6 +243,6 @@ export async function clearBlockSavedLatex(
         }
     } catch (error) {
         console.error('Error clearing block LaTeX:', error);
-        new Notice(`Error: ${(error as Error).message}`);
+        new Notice(`Error clearing block LaTeX: ${getErrorMessage(error)}`);
     }
 }

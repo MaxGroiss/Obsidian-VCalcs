@@ -8,6 +8,7 @@ import { autocompletion, CompletionContext, CompletionResult } from '@codemirror
 import { EditorViewPlugin } from '../types';
 import { VCALC_EDITOR_VIEW_TYPE, VCALC_ID_ATTRIBUTE, MATH_FUNCTIONS, MATH_CONSTANTS, GREEK_LETTERS, generateVCalcId, TIMING, RETRY_LIMITS } from '../constants';
 import { parseVsetFromCodeBlock, buildOptionsLine } from '../callout/parser';
+import { getErrorMessage } from '../utils/type-guards';
 
 // Block info with ID as primary identifier
 interface BlockInfo {
@@ -661,7 +662,7 @@ export class VCalcEditorView extends ItemView {
             return false;
         } catch (error) {
             console.error('Error writing to file:', error);
-            new Notice(`Error saving: ${(error as Error).message}`);
+            new Notice(`Error saving block: ${getErrorMessage(error)}`);
             return false;
         }
     }

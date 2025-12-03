@@ -9,8 +9,18 @@ export class PyodideExecutor {
     private pyodide: any = null;
     private isLoading = false;
     private loadPromise: Promise<void> | null = null;
+    private onLoadStart: (() => void) | null = null;
+    private onLoadComplete: (() => void) | null = null;
 
     private constructor() {}
+
+    /**
+     * Set callbacks for load events (useful for showing loading UI)
+     */
+    setLoadCallbacks(onStart: () => void, onComplete: () => void): void {
+        this.onLoadStart = onStart;
+        this.onLoadComplete = onComplete;
+    }
 
     /**
      * Get the singleton instance
@@ -36,6 +46,11 @@ export class PyodideExecutor {
             return;
         }
 
+        // Notify that loading is starting
+        if (this.onLoadStart) {
+            this.onLoadStart();
+        }
+
         // Start loading
         this.isLoading = true;
         this.loadPromise = this.loadPyodideInstance();
@@ -45,6 +60,11 @@ export class PyodideExecutor {
         } finally {
             this.isLoading = false;
             this.loadPromise = null;
+
+            // Notify that loading is complete
+            if (this.onLoadComplete) {
+                this.onLoadComplete();
+            }
         }
     }
 

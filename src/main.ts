@@ -55,12 +55,31 @@ export default class CalcBlocksPlugin extends Plugin {
     async onload() {
         await this.loadSettings();
 
+        // Setup Pyodide loading callbacks
+        const executor = PyodideExecutor.getInstance();
+        executor.setLoadCallbacks(
+            () => {
+                // Show loading notice
+                new Notice('Loading Python environment (first time only)...', 0);
+            },
+            () => {
+                // Clear loading notice and show success
+                const notices = document.querySelectorAll('.notice');
+                notices.forEach(notice => {
+                    if (notice.textContent?.includes('Loading Python environment')) {
+                        notice.remove();
+                    }
+                });
+                new Notice('Python environment ready!', 3000);
+            }
+        );
+
         // Register the sidebar views
         this.registerView(
             VCALC_VIEW_TYPE,
             (leaf) => new VCalcVariablesView(leaf, this)
         );
-        
+
         this.registerView(
             VCALC_EDITOR_VIEW_TYPE,
             (leaf) => new VCalcEditorView(leaf, this)
@@ -70,7 +89,7 @@ export default class CalcBlocksPlugin extends Plugin {
         this.addRibbonIcon('calculator', 'VCalc Variables', () => {
             this.activateVariablesView();
         });
-        
+
         // Add ribbon icon for editor
         this.addRibbonIcon('code', 'VCalc Editor', () => {
             this.activateEditorView();
@@ -597,7 +616,7 @@ export default class CalcBlocksPlugin extends Plugin {
                 await saveBlockLatexToFile(this.app, callout, context.sourcePath, blockTitle);
             }
         } catch (error) {
-            new Notice(`Error: ${(error as Error).message}`);
+            new Notice(`Error executing calculation: ${getErrorMessage(error)}`);
             console.error('VCalc error:', error);
         }
     }
@@ -763,7 +782,7 @@ export default class CalcBlocksPlugin extends Plugin {
             new Notice('Calculation updated!');
             
         } catch (error) {
-            new Notice(`Error: ${(error as Error).message}`);
+            new Notice(`Error updating calculation: ${getErrorMessage(error)}`);
         }
     }
 

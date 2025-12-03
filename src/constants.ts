@@ -48,7 +48,6 @@ export const VSET_COLORS: VSetColor[] = [
 
 // Default plugin settings
 export const DEFAULT_SETTINGS: CalcBlocksSettings = {
-    pythonPath: 'python3',
     showSymbolic: true,
     showSubstitution: true,
     showResult: true,

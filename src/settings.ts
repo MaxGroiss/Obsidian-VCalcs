@@ -22,19 +22,13 @@ export class VCalcSettingTab extends PluginSettingTab {
 
         containerEl.createEl('h2', { text: 'VCalc Settings' });
 
-        // Python Settings Section
-        containerEl.createEl('h3', { text: 'Python Configuration' });
-
-        new Setting(containerEl)
-            .setName('Python Path')
-            .setDesc('Path to Python executable (e.g., python3, python, or full path)')
-            .addText(text => text
-                .setPlaceholder('python3')
-                .setValue(this.provider.settings.pythonPath)
-                .onChange(async (value) => {
-                    this.provider.settings.pythonPath = value || 'python3';
-                    await this.provider.saveSettings();
-                }));
+        // Info about Pyodide
+        const infoEl = containerEl.createEl('div', { cls: 'setting-item-description' });
+        infoEl.innerHTML = '💡 <strong>Python Execution:</strong> VCalc uses Pyodide (Python in WebAssembly) - no Python installation required!';
+        infoEl.style.marginBottom = '1em';
+        infoEl.style.padding = '0.5em';
+        infoEl.style.backgroundColor = 'var(--background-secondary)';
+        infoEl.style.borderRadius = '4px';
 
         // Behavior Settings Section
         containerEl.createEl('h3', { text: 'Behavior' });

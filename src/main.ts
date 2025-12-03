@@ -26,8 +26,8 @@ import {
 // Parser
 import { parseVsetFromCodeBlock, getCalloutTitle } from './callout/parser';
 
-// Python execution
-import { pythonToLatexWithVars, pythonToLatex } from './python/executor';
+// Python execution (Pyodide WASM)
+import { PyodideExecutor } from './python/pyodide-executor';
 
 // File persistence
 import {
@@ -442,16 +442,16 @@ export default class CalcBlocksPlugin extends Plugin {
                 existingVars = this.getVariables(context.sourcePath, vset);
             }
             
-            // Execute Python
+            // Execute Python with Pyodide
             const displayOptions = {
                 showSymbolic: this.settings.showSymbolic,
                 showSubstitution: this.settings.showSubstitution,
                 showResult: this.settings.showResult
             };
-            
-            const { latex, variables } = await pythonToLatexWithVars(
-                this.settings.pythonPath,
-                code, 
+
+            const executor = PyodideExecutor.getInstance();
+            const { latex, variables } = await executor.pythonToLatexWithVars(
+                code,
                 existingVars,
                 displayOptions
             );
@@ -462,14 +462,17 @@ export default class CalcBlocksPlugin extends Plugin {
             // Save new variables to vset
             if (vset && variables) {
                 for (const [varName, varData] of Object.entries(variables)) {
-                    this.updateVariable(
-                        context.sourcePath,
-                        vset,
-                        varName,
-                        varData.value,
-                        varData.type,
-                        blockTitle
-                    );
+                    // Type guard for variable data
+                    if (varData && typeof varData === 'object' && 'value' in varData && 'type' in varData) {
+                        this.updateVariable(
+                            context.sourcePath,
+                            vset,
+                            varName,
+                            varData.value,
+                            varData.type,
+                            blockTitle
+                        );
+                    }
                 }
             }
             
@@ -724,7 +727,8 @@ export default class CalcBlocksPlugin extends Plugin {
         ).join('\n').trim();
         
         try {
-            const latex = await pythonToLatex(this.settings.pythonPath, pythonCode);
+            const executor = PyodideExecutor.getInstance();
+            const latex = await executor.pythonToLatex(pythonCode);
             
             const outputMarker = '> <!-- calc-output -->';
             let outputStart = -1;

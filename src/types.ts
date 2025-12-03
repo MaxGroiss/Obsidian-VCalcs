@@ -34,7 +34,6 @@ export interface VSetColor {
 
 // Plugin settings
 export interface CalcBlocksSettings {
-    pythonPath: string;
     showSymbolic: boolean;
     showSubstitution: boolean;
     showResult: boolean;

@@ -69,13 +69,21 @@ export class PyodideExecutor {
     }
 
     /**
-     * Load Pyodide from CDN
+     * Load Pyodide from CDN with Electron/Obsidian compatibility
      */
     private async loadPyodideInstance(): Promise<void> {
         try {
-            // Load Pyodide from CDN directly
+            // CRITICAL FIX for Electron/Obsidian:
+            // Pyodide detects the 'process' global in Electron and incorrectly assumes Node.js
+            // Setting process.browser signals to use browser APIs instead of Node.js modules
+            // See: https://github.com/pyodide/pyodide/discussions/2248
+            if (typeof process !== 'undefined' && !(process as any).browser) {
+                (process as any).browser = 'Obsidian';
+            }
+
+            // Load Pyodide script from CDN
             const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js';
+            script.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js';
 
             await new Promise<void>((resolve, reject) => {
                 script.onload = () => resolve();
@@ -89,11 +97,12 @@ export class PyodideExecutor {
                 throw new Error('loadPyodide not found on window object');
             }
 
+            // Load Pyodide - will now use browser APIs thanks to process.browser flag
             this.pyodide = await loadPyodide({
-                indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.29.0/full/'
+                indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/'
             });
 
-            console.log('Pyodide loaded successfully');
+            console.log('Pyodide loaded successfully in Obsidian/Electron environment');
         } catch (error) {
             console.error('Failed to load Pyodide:', error);
             throw new Error(`Failed to load Pyodide: ${error}`);
@@ -137,16 +146,20 @@ export class PyodideExecutor {
         const pythonCode = generateConverterCodeWithVars(code, varInjection, displayOptions);
 
         try {
-            // Execute the Python code
-            const stdout = await this.pyodide.runPythonAsync(pythonCode);
+            // Capture stdout from Pyodide execution
+            let capturedOutput = '';
+            this.pyodide!.setStdout({ batched: (output: string) => { capturedOutput += output; } });
 
-            // Parse JSON output: { latex: "...", variables: {...} }
+            // Execute the Python code (pyodide is guaranteed non-null after ensureLoaded)
+            await this.pyodide!.runPythonAsync(pythonCode);
+
+            // Parse JSON output from captured stdout: { latex: "...", variables: {...} }
             try {
-                const result = JSON.parse(stdout);
+                const result = JSON.parse(capturedOutput);
                 return result as PythonResult;
             } catch (e) {
                 // Fallback: treat as plain latex string (old format)
-                return { latex: stdout, variables: {} };
+                return { latex: capturedOutput, variables: {} };
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -164,9 +177,14 @@ export class PyodideExecutor {
         const pythonCode = generateConverterCode(code);
 
         try {
-            // Execute the Python code
-            const result = await this.pyodide.runPythonAsync(pythonCode);
-            return String(result);
+            // Capture stdout from Pyodide execution
+            let capturedOutput = '';
+            this.pyodide!.setStdout({ batched: (output: string) => { capturedOutput += output; } });
+
+            // Execute the Python code (pyodide is guaranteed non-null after ensureLoaded)
+            await this.pyodide!.runPythonAsync(pythonCode);
+
+            return capturedOutput;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             throw new Error(`Python execution failed: ${errorMessage}`);

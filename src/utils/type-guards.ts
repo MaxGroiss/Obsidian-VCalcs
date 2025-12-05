@@ -104,3 +104,46 @@ export function variableValueToString(value: VariableValue): string {
     }
     return String(value);
 }
+
+/**
+ * Extract a simplified, user-friendly error message from a Python traceback.
+ * Returns the core error type and message without the full stack trace.
+ *
+ * @param error - The full error message (possibly containing Python traceback)
+ * @returns A simplified error message suitable for display in a Notice
+ *
+ * @example
+ * // Input: "Python execution failed: Traceback (most recent call last):\n  File...\nNameError: name 'x' is not defined"
+ * // Output: "NameError: name 'x' is not defined"
+ */
+export function extractSimplifiedError(error: string): string {
+    // Common Python error patterns to look for
+    const errorPatterns = [
+        /(\w+Error): (.+?)(?:\n|$)/,     // NameError, TypeError, ValueError, etc.
+        /(\w+Exception): (.+?)(?:\n|$)/, // Custom exceptions
+        /(\w+Warning): (.+?)(?:\n|$)/,   // Warnings
+    ];
+
+    for (const pattern of errorPatterns) {
+        const match = error.match(pattern);
+        if (match) {
+            return `${match[1]}: ${match[2].trim()}`;
+        }
+    }
+
+    // If no Python error pattern found, try to get the last meaningful line
+    const lines = error.split('\n').filter(line => line.trim());
+    if (lines.length > 0) {
+        // Get the last non-empty line that isn't a file reference
+        for (let i = lines.length - 1; i >= 0; i--) {
+            const line = lines[i].trim();
+            if (line && !line.startsWith('File ') && !line.startsWith('  ')) {
+                // Truncate if too long
+                return line.length > 100 ? line.substring(0, 97) + '...' : line;
+            }
+        }
+    }
+
+    // Fallback: return a generic message
+    return 'Calculation error';
+}

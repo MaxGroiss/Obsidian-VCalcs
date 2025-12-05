@@ -827,3 +827,120 @@
 .vcalc-rename-buttons button.mod-cta:hover {
     filter: brightness(1.1);
 }
+
+/* =====================================================
+   VCALC EDITOR - SETTINGS PANEL
+   ===================================================== */
+
+.vcalc-editor-settings-btn {
+    padding: 4px 8px !important;
+    font-size: 14px !important;
+    min-width: auto !important;
+}
+
+.vcalc-editor-settings-btn.vcalc-settings-btn-active {
+    background-color: rgba(var(--interactive-accent-rgb), 0.2);
+    border-color: var(--interactive-accent);
+    color: var(--interactive-accent);
+}
+
+.vcalc-editor-settings-panel {
+    padding: 12px;
+    margin-top: 8px;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+}
+
+.vcalc-settings-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.vcalc-settings-row:last-child {
+    margin-bottom: 0;
+}
+
+.vcalc-settings-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    min-width: 80px;
+    flex-shrink: 0;
+}
+
+.vcalc-settings-select {
+    flex: 1;
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-secondary);
+    color: var(--text-normal);
+    cursor: pointer;
+    max-width: 150px;
+}
+
+.vcalc-settings-select:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+}
+
+.vcalc-settings-checkboxes {
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.vcalc-settings-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+}
+
+.vcalc-settings-checkbox-label:hover {
+    color: var(--text-normal);
+}
+
+.vcalc-settings-checkbox-label input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+.vcalc-settings-apply-row {
+    margin-top: 8px;
+    justify-content: flex-end;
+}
+
+.vcalc-settings-apply-btn {
+    background-color: rgba(100, 200, 150, 0.15);
+    border-color: rgba(100, 200, 150, 0.4);
+    color: rgb(100, 200, 150);
+    padding: 4px 16px !important;
+    font-size: 12px !important;
+}
+
+.vcalc-settings-apply-btn:hover {
+    background-color: rgba(100, 200, 150, 0.25);
+    border-color: rgba(100, 200, 150, 0.6);
+}
+
+/* =====================================================
+   VCALC EDITOR - DISCONNECT BUTTON
+   ===================================================== */
+
+.vcalc-editor-disconnect-btn {
+    margin-left: auto;  /* Push to right side of button bar */
+    background-color: rgba(var(--color-red-rgb), 0.15);
+    border-color: rgba(var(--color-red-rgb), 0.4);
+    color: var(--text-error);
+}
+
+.vcalc-editor-disconnect-btn:hover {
+    background-color: rgba(var(--color-red-rgb), 0.25);
+    border-color: rgba(var(--color-red-rgb), 0.6);
+}

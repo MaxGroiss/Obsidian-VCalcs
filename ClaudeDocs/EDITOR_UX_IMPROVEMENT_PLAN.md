@@ -65,45 +65,57 @@ Transform the VCalc editor from a basic code input into a **professional math-fo
 
 ---
 
-### Phase 2: Block Settings Panel
+### Phase 2: Block Settings Panel ✅ COMPLETED
 **Priority: High | Effort: Medium**
+**Status: Implemented December 2024**
 
-#### 2.1 Settings Panel UI
-Add a collapsible settings panel below the block selector:
+#### 2.1 Settings Panel UI ✅
+Added a collapsible settings panel triggered by ⚙ button in the header row:
 
 ```
 ┌─────────────────────────────────────────────┐
-│ [Block Dropdown ▼] [●] [↻]  [⚙ Settings]   │
+│ Block: [Dropdown ▼] [●] [✏️] [↻] [⚙]       │
 ├─────────────────────────────────────────────┤
-│ ┌─ Block Settings ────────────────────────┐ │
-│ │ Title: [_______________] [✏️ Rename]    │ │
-│ │                                         │ │
-│ │ Variable Set: [main     ▼]              │ │
-│ │   ○ Create new: [_______]               │ │
-│ │                                         │ │
-│ │ Appearance:                             │ │
-│ │   Background: [Default ▼]               │ │
-│ │   □ Compact Mode                        │ │
-│ │   □ Sync Accent with VSet               │ │
-│ │   □ Hidden (code only)                  │ │
-│ └─────────────────────────────────────────┘ │
-│                                             │
+│ Variable Set: [physics ▼]                   │
+│ Background:   [Default ▼]                   │
+│ □ Compact  □ Sync Accent  □ Hidden          │
+│                               [Apply]       │
+├─────────────────────────────────────────────┤
 │ [CodeMirror Editor]                         │
-│                                             │
-│ [▶ Run] [💾 Save]                           │
+├─────────────────────────────────────────────┤
+│ [▶ Run] [Save to File]        [Disconnect]  │
 └─────────────────────────────────────────────┘
 ```
 
-#### 2.2 Settings Functionality
-- **Variable Set Selector**: Dropdown with existing vsets + "Create new" option
+#### 2.2 Settings Functionality ✅
+- **Variable Set Selector**: Dropdown with existing vsets + "Create new..." option
+- **VsetNameModal**: Modal dialog for creating new variable sets
 - **Background Style**: Default, Transparent, Subtle, Solid
-- **Checkboxes**: Compact, Accent Sync, Hidden
-- **Live Preview**: Changes reflect immediately in note mirror
+- **Checkboxes**: Compact, Sync Accent, Hidden
+- **Apply Button**: Saves changes and runs the block to apply visual changes
 
-#### 2.3 Implementation Details
-- Settings stored in the `# vcalc:` options line
-- Use `buildOptionsLine()` from parser to reconstruct
-- Debounced save to prevent excessive writes
+#### 2.3 Additional Features Implemented ✅
+- **Disconnect Button**: Red-styled button to disconnect from current block
+  - Positioned on right side of button bar with `margin-left: auto`
+  - Sets `isDisconnected` flag to prevent auto-reconnection
+  - Clears dropdown selection when disconnected
+- **Save to File Button**: Now saves LaTeX output (not code) like callout button
+- **Outdated Badge Fix**: Badge now properly removed when saving from editor
+- **Simplified Error Messages**: Python tracebacks parsed to show only error type and message
+
+**Implementation:**
+- `toggleSettingsPanel()`, `createSettingsPanel()`, `updateSettingsPanel()` methods
+- `populateVsetSelector()`, `onSettingChange()`, `updateEditorOptionsLine()` methods
+- `applySettings()` - saves and runs to apply changes
+- `VsetNameModal` class for new variable set creation
+- `handleDisconnect()` with `isDisconnected` state management
+- `saveLatexToFile()` with outdated badge removal
+- `extractSimplifiedError()` in type-guards.ts for error parsing
+
+**CSS:**
+- `.vcalc-editor-settings-panel` and child elements
+- `.vcalc-editor-disconnect-btn` with red warning styling
+- `.vcalc-settings-apply-btn` with green accent
 
 ---
 
@@ -245,25 +257,69 @@ Show variables created/modified by the block:
 
 ---
 
-### Phase 6: Advanced Features (Future)
+### Phase 6: Variable Store Cleanup
+**Priority: High | Effort: Medium**
+
+#### 6.1 Problem Statement
+When a variable is deleted from a code block and the block is re-run, the variable persists in the Variables View. This creates stale data that can confuse users and cause unexpected behavior in other blocks using the same variable set.
+
+#### 6.2 Complexity
+This is non-trivial because:
+- A variable might be defined in **multiple blocks** within the same variable set
+- Deleting from one block shouldn't remove it if another block still defines it
+- Need to track which block(s) define each variable
+
+#### 6.3 Proposed Solutions
+
+**Option A: Per-Block Variable Tracking**
+- Store variable source (block ID) alongside value
+- On block run, clear only variables from that block, then re-add new ones
+- Variables from other blocks remain untouched
+
+**Option B: Full VSet Rebuild**
+- On any block run, scan ALL blocks with same vset
+- Rebuild the entire variable set from scratch
+- More expensive but simpler logic
+
+**Option C: Reference Counting**
+- Track how many blocks define each variable
+- Only remove when count reaches zero
+- Complex but memory efficient
+
+#### 6.4 Recommended Approach: Option A
+1. Extend `VariableInfo` type to include `sourceBlockId: string`
+2. In `pythonToLatexWithVars`, return which variables were defined
+3. Before merging new variables, remove old ones from same block ID
+4. Update Variables View to show source block (already partially implemented)
+
+#### 6.5 Implementation Tasks
+- [ ] Modify variable store structure to track source block ID
+- [ ] Update Python executor to return list of defined variables
+- [ ] Implement cleanup logic in main.ts `processCallout()`
+- [ ] Handle edge cases (block deleted, block ID changed, etc.)
+- [ ] Add tests for variable cleanup scenarios
+
+---
+
+### Phase 7: Advanced Features (Future)
 **Priority: Low | Effort: High**
 
-#### 6.1 Multi-Block View
+#### 7.1 Multi-Block View
 - Split view showing multiple blocks
 - Drag to reorder blocks in note
 - Batch operations (run all, save all)
 
-#### 6.2 Code Snippets Library
+#### 7.2 Code Snippets Library
 - User-defined snippets
 - Import/export snippet collections
 - Community snippet sharing
 
-#### 6.3 Syntax Validation
+#### 7.3 Syntax Validation
 - Real-time Python syntax checking
 - Highlight undefined variables
 - Suggest fixes for common errors
 
-#### 6.4 Version History
+#### 7.4 Version History
 - Track changes to blocks
 - Restore previous versions
 - Diff view between versions
@@ -272,26 +328,32 @@ Show variables created/modified by the block:
 
 ## Implementation Priority Order
 
-### Immediate (This Sprint)
-1. **Fix Post-Run Focus Issue** - Critical UX bug
-2. **Add Block Rename** - High user value, low effort
-3. **Basic Settings Panel** - VSet selector, appearance options
+### Completed ✅
+1. ~~**Fix Post-Run Focus Issue**~~ - Phase 1
+2. ~~**Add Block Rename**~~ - Phase 1
+3. ~~**Status Bar Feedback**~~ - Phase 1
+4. ~~**Block Settings Panel**~~ - Phase 2
+5. ~~**Disconnect Button**~~ - Phase 2
+6. ~~**Simplified Error Messages**~~ - Phase 2
 
-### Short-Term (Next Sprint)
-4. **Math Reference Panel** - Core differentiator
-5. **Improved Toolbar** - Professional polish
-6. **Execution Feedback** - Better error display
+### Immediate (Next Sprint)
+7. **Variable Store Cleanup** - Phase 6 (High priority - data integrity issue)
+
+### Short-Term
+8. **Math Reference Panel** - Phase 3
+9. **Improved Toolbar** - Phase 4
+10. **Execution Feedback** - Phase 5
 
 ### Medium-Term
-7. **Click-to-Insert Templates** - Power user feature
-8. **Keyboard Shortcuts Help** - Discoverability
-9. **Variable Inspector** - Debugging aid
+11. **Click-to-Insert Templates** - Phase 3
+12. **Keyboard Shortcuts Help** - Phase 4
+13. **Variable Inspector** - Phase 5
 
 ### Long-Term (Backlog)
-10. Multi-block view
-11. Snippets library
-12. Syntax validation
-13. Version history
+14. Multi-block view - Phase 7
+15. Snippets library - Phase 7
+16. Syntax validation - Phase 7
+17. Version history - Phase 7
 
 ---
 
@@ -341,12 +403,24 @@ styles.css additions:
 
 ---
 
-**Document Version**: 1.1
+**Document Version**: 1.2
 **Created**: December 2024
 **Last Updated**: December 2024
-**Status**: Phase 1 Complete, Phase 2+ Pending
+**Status**: Phase 1-2 Complete, Phase 6 Next Priority
 
 ### Changelog
+
+#### v1.2 (December 2024)
+- Phase 2 implemented: Block Settings Panel
+  - Collapsible settings panel with vset, background, compact, accent, hidden options
+  - VsetNameModal for creating new variable sets
+  - Apply button to save and run
+- Disconnect button with red styling, positioned on right
+- Save to File button now saves LaTeX output (not code)
+- Outdated badge properly removed when saving from editor
+- Simplified error messages (extractSimplifiedError function)
+- Fixed auto-connect issue when disconnected
+- Added Phase 6: Variable Store Cleanup to address stale variable issue
 
 #### v1.1 (December 2024)
 - Phase 1 implemented and tested

@@ -37,7 +37,7 @@ import {
 } from './file/latex-persistence';
 
 // Type guards
-import { getErrorMessage } from './utils/type-guards';
+import { getErrorMessage, extractSimplifiedError } from './utils/type-guards';
 
 // Messages
 import { NOTICES, UI, TOOLTIPS, CONSOLE } from './messages';
@@ -619,8 +619,24 @@ export default class CalcBlocksPlugin extends Plugin {
                 await saveBlockLatexToFile(this.app, callout, context.sourcePath, blockTitle);
             }
         } catch (error) {
-            new Notice(NOTICES.ERROR_EXECUTING_CALCULATION(getErrorMessage(error)));
-            console.error(CONSOLE.VCALC_ERROR, error);
+            const fullError = getErrorMessage(error);
+            const simpleError = extractSimplifiedError(fullError);
+            new Notice(NOTICES.ERROR_EXECUTING_CALCULATION(simpleError));
+            console.error(CONSOLE.VCALC_ERROR, fullError);
+
+            // Render error in output container so editor can detect it
+            let outputContainer = callout.querySelector('.calc-output') as HTMLElement;
+            if (!outputContainer) {
+                outputContainer = document.createElement('div');
+                outputContainer.className = 'calc-output';
+                callout.querySelector('.callout-content')?.appendChild(outputContainer);
+            }
+            outputContainer.empty();
+
+            const errorEl = document.createElement('div');
+            errorEl.className = 'calc-error';
+            errorEl.textContent = simpleError;
+            outputContainer.appendChild(errorEl);
         }
     }
 
@@ -785,7 +801,10 @@ export default class CalcBlocksPlugin extends Plugin {
             new Notice(NOTICES.CALCULATION_UPDATED);
 
         } catch (error) {
-            new Notice(NOTICES.ERROR_UPDATING_CALCULATION(getErrorMessage(error)));
+            const fullError = getErrorMessage(error);
+            const simpleError = extractSimplifiedError(fullError);
+            new Notice(NOTICES.ERROR_UPDATING_CALCULATION(simpleError));
+            console.error(CONSOLE.VCALC_ERROR, fullError);
         }
     }
 

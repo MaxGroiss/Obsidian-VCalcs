@@ -10,6 +10,7 @@ import { VCALC_EDITOR_VIEW_TYPE, VCALC_ID_ATTRIBUTE, MATH_FUNCTIONS, MATH_CONSTA
 import { parseVsetFromCodeBlock, buildOptionsLine } from '../callout/parser';
 import { getErrorMessage } from '../utils/type-guards';
 import { NOTICES, UI, TOOLTIPS, STATUS, CONSOLE } from '../messages';
+import { saveBlockLatexToFile } from '../file/latex-persistence';
 
 // Block info with ID as primary identifier
 interface BlockInfo {
@@ -18,6 +19,10 @@ interface BlockInfo {
     title: string;
     vset: string | null;
     code: string;
+    hidden: boolean;
+    accentVset: boolean | null;
+    bgStyle: string | null;
+    compact: boolean | null;
 }
 
 // Constants
@@ -29,17 +34,34 @@ export class VCalcEditorView extends ItemView {
     private blockSelector: HTMLSelectElement | null = null;
     private statusBar: HTMLElement | null = null;
     private dirtyIndicator: HTMLElement | null = null;
-    
+
+    // Settings panel elements
+    private settingsPanel: HTMLElement | null = null;
+    private settingsToggleBtn: HTMLButtonElement | null = null;
+    private vsetSelector: HTMLSelectElement | null = null;
+    private bgSelector: HTMLSelectElement | null = null;
+    private compactCheckbox: HTMLInputElement | null = null;
+    private accentCheckbox: HTMLInputElement | null = null;
+    private hiddenCheckbox: HTMLInputElement | null = null;
+    private settingsPanelOpen: boolean = false;
+
     // Selected block - ID is primary, index is fallback
     private selectedBlockId: string | null = null;
     private selectedBlockIndex: number = -1;
     private selectedBlockVset: string | null = null;
     private selectedBlockLine: number = -1;  // Line number in markdown file (for hint-based lookup)
+
+    // Current block options (for settings panel)
+    private currentBlockHidden: boolean = false;
+    private currentBlockAccentVset: boolean | null = null;
+    private currentBlockBgStyle: string | null = null;
+    private currentBlockCompact: boolean | null = null;
     
     // Editor state
     private isUpdatingEditor: boolean = false;
     private isDirty: boolean = false;
     private editorContent: string = '';
+    private isDisconnected: boolean = true;  // Start disconnected until a block is selected
 
     // File write lock to prevent race conditions
     private isWriting: boolean = false;
@@ -99,18 +121,32 @@ export class VCalcEditorView extends ItemView {
         refreshBtn.title = TOOLTIPS.REFRESH_BLOCK_LIST;
         refreshBtn.addEventListener('click', () => this.fullRefresh());
 
+        // Settings toggle button
+        this.settingsToggleBtn = selectorRow.createEl('button', { cls: 'vcalc-editor-btn vcalc-editor-settings-btn' });
+        this.settingsToggleBtn.innerHTML = UI.SETTINGS_PANEL_TOGGLE;
+        this.settingsToggleBtn.title = TOOLTIPS.TOGGLE_SETTINGS;
+        this.settingsToggleBtn.addEventListener('click', () => this.toggleSettingsPanel());
+
+        // Settings Panel (initially hidden)
+        this.settingsPanel = header.createEl('div', { cls: 'vcalc-editor-settings-panel' });
+        this.settingsPanel.style.display = 'none';
+        this.createSettingsPanel(this.settingsPanel);
+
         // Editor
         const editorContainer = container.createEl('div', { cls: 'vcalc-editor-codemirror' });
         this.initializeEditor(editorContainer);
 
         // Buttons
         const buttonBar = container.createEl('div', { cls: 'vcalc-editor-buttons' });
-        
+
         const runBtn = buttonBar.createEl('button', { text: UI.BUTTON_RUN, cls: 'vcalc-editor-btn vcalc-editor-run-btn' });
         runBtn.addEventListener('click', () => this.runCurrentBlock());
 
         const saveBtn = buttonBar.createEl('button', { text: UI.BUTTON_SAVE_TO_FILE, cls: 'vcalc-editor-btn vcalc-editor-save-btn' });
-        saveBtn.addEventListener('click', () => this.saveToFile());
+        saveBtn.addEventListener('click', () => this.saveLatexToFile());
+
+        const disconnectBtn = buttonBar.createEl('button', { text: UI.EDITOR_BUTTON_DISCONNECT, cls: 'vcalc-editor-btn vcalc-editor-disconnect-btn' });
+        disconnectBtn.addEventListener('click', () => this.handleDisconnect());
 
         // Status
         this.statusBar = container.createEl('div', { cls: 'vcalc-editor-status' });
@@ -206,8 +242,8 @@ export class VCalcEditorView extends ItemView {
                     ...historyKeymap,
                     { key: 'Ctrl-Enter', run: () => { this.runCurrentBlock(); return true; } },
                     { key: 'Cmd-Enter', run: () => { this.runCurrentBlock(); return true; } },
-                    { key: 'Ctrl-s', run: () => { this.saveToFile(); return true; } },
-                    { key: 'Cmd-s', run: () => { this.saveToFile(); return true; } },
+                    { key: 'Ctrl-s', run: () => { this.saveCodeToFile(); return true; } },
+                    { key: 'Cmd-s', run: () => { this.saveCodeToFile(); return true; } },
                 ]),
                 EditorView.updateListener.of((update: ViewUpdate) => {
                     if (update.docChanged && !this.isUpdatingEditor) {
@@ -323,9 +359,9 @@ export class VCalcEditorView extends ItemView {
     private getBlockInfoFromCallout(callout: HTMLElement, index: number): BlockInfo {
         const titleEl = callout.querySelector('.callout-title-inner');
         const title = titleEl?.textContent || 'Unnamed Block';
-        const { id, code, vset } = parseVsetFromCodeBlock(callout);
-        
-        return { id, index, title, vset, code };
+        const { id, code, vset, hidden, accentVset, bgStyle, compact } = parseVsetFromCodeBlock(callout);
+
+        return { id, index, title, vset, code, hidden, accentVset, bgStyle, compact };
     }
 
     // ==================== Mirror Management ====================
@@ -475,23 +511,35 @@ export class VCalcEditorView extends ItemView {
         }
         
         if (selectedOption) {
-            this.blockSelector.value = selectedOption.value;
-            if (!this.selectedBlockId && this.selectedBlockIndex < 0) {
-                // Auto-connect to first block
-                const id = selectedOption.getAttribute('data-id');
-                const index = parseInt(selectedOption.value, 10);
-                this.connectToBlock(id, index);
+            // Only set the dropdown value if NOT disconnected
+            if (!this.isDisconnected) {
+                this.blockSelector.value = selectedOption.value;
+                // Auto-connect to first block if no block currently selected
+                if (!this.selectedBlockId && this.selectedBlockIndex < 0) {
+                    const id = selectedOption.getAttribute('data-id');
+                    const index = parseInt(selectedOption.value, 10);
+                    this.connectToBlock(id, index);
+                }
+            } else {
+                // When disconnected, reset dropdown to show no selection
+                this.blockSelector.selectedIndex = -1;
             }
         }
 
-        this.updateStatus(`${callouts.length} block(s) in ${activeFile.basename}`);
+        // Show appropriate status based on connection state
+        if (this.isDisconnected) {
+            this.updateStatus('Disconnected');
+        } else {
+            this.updateStatus(`${callouts.length} block(s) in ${activeFile.basename}`);
+        }
     }
 
     private async switchToBlock(id: string | null, index: number) {
-        if (id === this.selectedBlockId && index === this.selectedBlockIndex) return;
+        // Skip if already connected to this exact block (and not disconnected)
+        if (!this.isDisconnected && id === this.selectedBlockId && index === this.selectedBlockIndex) return;
 
         await this.disconnectFromBlock();
-        
+
         // Wait for Obsidian to re-render after potential file write
         await new Promise(resolve => setTimeout(resolve, TIMING.DOM_STABILIZATION_DELAY_MS));
 
@@ -499,6 +547,9 @@ export class VCalcEditorView extends ItemView {
     }
 
     private connectToBlock(id: string | null, index: number) {
+        // Clear disconnected state when connecting to a block
+        this.isDisconnected = false;
+
         // Try by ID first, then fall back to index
         let callout: HTMLElement | null = null;
         if (id) {
@@ -507,25 +558,32 @@ export class VCalcEditorView extends ItemView {
         if (!callout) {
             callout = this.getCalloutByIndex(index);
         }
-        
+
         if (!callout) {
             return;
         }
 
         const info = this.getBlockInfoFromCallout(callout, index);
-        
+
         this.selectedBlockId = info.id;
         this.selectedBlockIndex = index;
         this.selectedBlockVset = info.vset;
 
-        // Build full code including options line
-        let fullCode = buildOptionsLine({
+        // Build full code including options line with all block options
+        const fullCode = buildOptionsLine({
             id: info.id || generateVCalcId(),
-            vset: info.vset
+            vset: info.vset,
+            hidden: info.hidden,
+            accentVset: info.accentVset,
+            bgStyle: info.bgStyle,
+            compact: info.compact
         }) + '\n' + info.code;
 
         this.editorContent = fullCode;
         this.setEditorText(fullCode);
+
+        // Update settings panel with current block options
+        this.updateSettingsPanel(info);
 
         // Apply mirror
         this.removeAllMirrors();
@@ -709,7 +767,10 @@ export class VCalcEditorView extends ItemView {
         }
     }
 
-    private async saveToFile() {
+    /**
+     * Immediately save the code to the markdown file (triggered by Ctrl+S).
+     */
+    private async saveCodeToFile() {
         if (this.idleTimer) {
             clearTimeout(this.idleTimer);
             this.idleTimer = null;
@@ -718,6 +779,46 @@ export class VCalcEditorView extends ItemView {
         if (await this.safeWriteToFile()) {
             new Notice(NOTICES.CODE_SAVED);
         }
+    }
+
+    /**
+     * Save the LaTeX output of the current block to the markdown file.
+     */
+    private async saveLatexToFile() {
+        if (!this.selectedBlockId && this.selectedBlockIndex < 0) {
+            new Notice(NOTICES.NO_BLOCK_SELECTED);
+            return;
+        }
+
+        const callout = this.getSelectedCallout();
+        if (!callout) {
+            new Notice(NOTICES.BLOCK_NOT_FOUND);
+            return;
+        }
+
+        const activeFile = this.plugin.app.workspace.getActiveFile();
+        if (!activeFile) {
+            new Notice(NOTICES.NO_ACTIVE_VIEW);
+            return;
+        }
+
+        const info = this.getBlockInfoFromCallout(callout, this.selectedBlockIndex);
+        await saveBlockLatexToFile(this.plugin.app, callout, activeFile.path, info.title);
+
+        // Remove outdated badge after saving (same as callout button)
+        const outdatedWrappers = callout.querySelectorAll('.calc-saved-outdated');
+        outdatedWrappers.forEach((wrapper) => wrapper.remove());
+    }
+
+    /**
+     * Handle disconnect button click - disconnect from current block and reset editor.
+     */
+    private async handleDisconnect() {
+        await this.disconnectFromBlock();
+        this.isDisconnected = true;
+        this.setEditorText('# Select a block to edit');
+        this.updateStatus('Disconnected');
+        this.fullRefresh();
     }
 
     // ==================== Actions ====================
@@ -976,6 +1077,313 @@ export class VCalcEditorView extends ItemView {
         }
 
         return { hasError: false };
+    }
+
+    // ==================== Settings Panel ====================
+
+    /**
+     * Toggle the visibility of the settings panel.
+     */
+    private toggleSettingsPanel() {
+        this.settingsPanelOpen = !this.settingsPanelOpen;
+        if (this.settingsPanel) {
+            this.settingsPanel.style.display = this.settingsPanelOpen ? 'block' : 'none';
+        }
+        if (this.settingsToggleBtn) {
+            this.settingsToggleBtn.classList.toggle('vcalc-settings-btn-active', this.settingsPanelOpen);
+        }
+    }
+
+    /**
+     * Create the settings panel UI elements.
+     */
+    private createSettingsPanel(container: HTMLElement) {
+        // Variable Set row
+        const vsetRow = container.createEl('div', { cls: 'vcalc-settings-row' });
+        vsetRow.createEl('label', { text: UI.SETTINGS_VSET_LABEL, cls: 'vcalc-settings-label' });
+        this.vsetSelector = vsetRow.createEl('select', { cls: 'vcalc-settings-select' });
+        this.vsetSelector.addEventListener('change', () => this.onSettingChange());
+
+        // Background row
+        const bgRow = container.createEl('div', { cls: 'vcalc-settings-row' });
+        bgRow.createEl('label', { text: UI.SETTINGS_BG_LABEL, cls: 'vcalc-settings-label' });
+        this.bgSelector = bgRow.createEl('select', { cls: 'vcalc-settings-select' });
+        this.bgSelector.createEl('option', { text: UI.SETTINGS_BG_DEFAULT, value: '' });
+        this.bgSelector.createEl('option', { text: UI.SETTINGS_BG_TRANSPARENT, value: 'transparent' });
+        this.bgSelector.createEl('option', { text: UI.SETTINGS_BG_SUBTLE, value: 'subtle' });
+        this.bgSelector.createEl('option', { text: UI.SETTINGS_BG_SOLID, value: 'solid' });
+        this.bgSelector.addEventListener('change', () => this.onSettingChange());
+
+        // Checkboxes row
+        const checkboxRow = container.createEl('div', { cls: 'vcalc-settings-row vcalc-settings-checkboxes' });
+
+        // Compact checkbox
+        const compactLabel = checkboxRow.createEl('label', { cls: 'vcalc-settings-checkbox-label' });
+        this.compactCheckbox = compactLabel.createEl('input', { type: 'checkbox' });
+        compactLabel.createSpan({ text: UI.SETTINGS_COMPACT_LABEL });
+        this.compactCheckbox.addEventListener('change', () => this.onSettingChange());
+
+        // Accent checkbox
+        const accentLabel = checkboxRow.createEl('label', { cls: 'vcalc-settings-checkbox-label' });
+        this.accentCheckbox = accentLabel.createEl('input', { type: 'checkbox' });
+        accentLabel.createSpan({ text: UI.SETTINGS_ACCENT_LABEL });
+        this.accentCheckbox.addEventListener('change', () => this.onSettingChange());
+
+        // Hidden checkbox
+        const hiddenLabel = checkboxRow.createEl('label', { cls: 'vcalc-settings-checkbox-label' });
+        this.hiddenCheckbox = hiddenLabel.createEl('input', { type: 'checkbox' });
+        hiddenLabel.createSpan({ text: UI.SETTINGS_HIDDEN_LABEL });
+        this.hiddenCheckbox.addEventListener('change', () => this.onSettingChange());
+
+        // Apply button row
+        const applyRow = container.createEl('div', { cls: 'vcalc-settings-row vcalc-settings-apply-row' });
+        const applyBtn = applyRow.createEl('button', {
+            text: UI.SETTINGS_APPLY_BUTTON,
+            cls: 'vcalc-editor-btn vcalc-settings-apply-btn'
+        });
+        applyBtn.addEventListener('click', () => this.applySettings());
+    }
+
+    /**
+     * Update the settings panel with the current block's options.
+     */
+    private updateSettingsPanel(info: BlockInfo) {
+        // Update vset selector options
+        this.populateVsetSelector(info.vset);
+
+        // Update background selector
+        if (this.bgSelector) {
+            this.bgSelector.value = info.bgStyle || '';
+        }
+
+        // Update checkboxes
+        if (this.compactCheckbox) {
+            this.compactCheckbox.checked = info.compact === true;
+        }
+        if (this.accentCheckbox) {
+            this.accentCheckbox.checked = info.accentVset === true;
+        }
+        if (this.hiddenCheckbox) {
+            this.hiddenCheckbox.checked = info.hidden;
+        }
+
+        // Store current values
+        this.currentBlockHidden = info.hidden;
+        this.currentBlockAccentVset = info.accentVset;
+        this.currentBlockBgStyle = info.bgStyle;
+        this.currentBlockCompact = info.compact;
+    }
+
+    /**
+     * Populate the vset selector with available variable sets.
+     */
+    private populateVsetSelector(currentVset: string | null) {
+        if (!this.vsetSelector) return;
+
+        this.vsetSelector.empty();
+
+        // Add "none" option
+        const noneOption = this.vsetSelector.createEl('option', { text: UI.SETTINGS_VSET_NONE, value: '' });
+        if (!currentVset) noneOption.selected = true;
+
+        // Get existing vsets from the current file
+        const activeFile = this.plugin.app.workspace.getActiveFile();
+        if (activeFile) {
+            const noteVars = this.plugin.variableStore[activeFile.path];
+            if (noteVars) {
+                const vsets = Object.keys(noteVars);
+                for (const vset of vsets) {
+                    const option = this.vsetSelector.createEl('option', { text: vset, value: vset });
+                    if (vset === currentVset) option.selected = true;
+                }
+            }
+        }
+
+        // If current vset exists but wasn't in the store (new block), add it
+        if (currentVset && this.vsetSelector.value !== currentVset) {
+            const option = this.vsetSelector.createEl('option', { text: currentVset, value: currentVset });
+            option.selected = true;
+        }
+
+        // Add "Create new..." option
+        this.vsetSelector.createEl('option', { text: UI.SETTINGS_VSET_CREATE_NEW, value: '__new__' });
+    }
+
+    /**
+     * Handle changes to settings panel controls.
+     */
+    private onSettingChange() {
+        // Handle "Create new" vset selection
+        if (this.vsetSelector?.value === '__new__') {
+            this.promptForNewVset();
+            return;
+        }
+
+        // Gather current settings
+        const newVset = this.vsetSelector?.value || null;
+        const newBgStyle = this.bgSelector?.value || null;
+        const newCompact = this.compactCheckbox?.checked || false;
+        const newAccentVset = this.accentCheckbox?.checked || false;
+        const newHidden = this.hiddenCheckbox?.checked || false;
+
+        // Update internal state
+        this.selectedBlockVset = newVset;
+        this.currentBlockBgStyle = newBgStyle;
+        this.currentBlockCompact = newCompact ? true : null;
+        this.currentBlockAccentVset = newAccentVset ? true : null;
+        this.currentBlockHidden = newHidden;
+
+        // Rebuild the options line in the editor
+        this.updateEditorOptionsLine();
+    }
+
+    /**
+     * Prompt for a new variable set name.
+     */
+    private async promptForNewVset() {
+        const newName = await this.promptForVsetName();
+        if (newName) {
+            // Add the new vset to the selector and select it
+            if (this.vsetSelector) {
+                // Insert before the "Create new..." option
+                const createOption = this.vsetSelector.querySelector('option[value="__new__"]');
+                const newOption = this.vsetSelector.createEl('option', { text: newName, value: newName });
+                if (createOption) {
+                    this.vsetSelector.insertBefore(newOption, createOption);
+                }
+                this.vsetSelector.value = newName;
+                this.onSettingChange();
+            }
+        } else {
+            // User cancelled, revert to previous selection
+            if (this.vsetSelector) {
+                this.vsetSelector.value = this.selectedBlockVset || '';
+            }
+        }
+    }
+
+    /**
+     * Show a prompt dialog for entering a new vset name.
+     */
+    private promptForVsetName(): Promise<string | null> {
+        return new Promise((resolve) => {
+            const modal = new VsetNameModal(this.plugin.app, (result) => {
+                resolve(result);
+            });
+            modal.open();
+        });
+    }
+
+    /**
+     * Update the options line in the editor content.
+     */
+    private updateEditorOptionsLine() {
+        if (!this.editorView || !this.selectedBlockId) return;
+
+        const currentText = this.getEditorText();
+        const lines = currentText.split('\n');
+
+        // Build new options line
+        const newOptionsLine = buildOptionsLine({
+            id: this.selectedBlockId,
+            vset: this.selectedBlockVset,
+            hidden: this.currentBlockHidden,
+            accentVset: this.currentBlockAccentVset,
+            bgStyle: this.currentBlockBgStyle,
+            compact: this.currentBlockCompact
+        });
+
+        // Replace the first line if it's an options line, otherwise prepend
+        if (lines.length > 0 && lines[0].startsWith('# vcalc:')) {
+            lines[0] = newOptionsLine;
+        } else {
+            lines.unshift(newOptionsLine);
+        }
+
+        const newText = lines.join('\n');
+        if (newText !== currentText) {
+            this.setEditorText(newText);
+            this.editorContent = newText;
+            this.isDirty = true;
+            this.updateDirtyIndicator();
+            this.updateMirrorContent();
+        }
+    }
+
+    /**
+     * Apply settings by saving and running the block.
+     */
+    private async applySettings() {
+        // First save any pending changes
+        if (this.isDirty) {
+            await this.safeWriteToFile();
+        }
+        // Then run the block to apply visual changes
+        await this.runCurrentBlock();
+    }
+}
+
+/**
+ * Modal dialog for entering a new vset name.
+ */
+class VsetNameModal extends Modal {
+    private result: string = '';
+    private onSubmit: (result: string | null) => void;
+
+    constructor(app: App, onSubmit: (result: string | null) => void) {
+        super(app);
+        this.onSubmit = onSubmit;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.addClass('vcalc-rename-modal');
+
+        contentEl.createEl('h3', { text: 'New Variable Set' });
+
+        const inputContainer = contentEl.createEl('div', { cls: 'vcalc-rename-input-container' });
+        const input = inputContainer.createEl('input', {
+            type: 'text',
+            cls: 'vcalc-rename-input',
+            placeholder: 'e.g., physics, main, data'
+        });
+        input.addEventListener('input', (e: Event) => {
+            this.result = (e.target as HTMLInputElement).value;
+        });
+        input.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.submit();
+            }
+        });
+
+        const buttonContainer = contentEl.createEl('div', { cls: 'vcalc-rename-buttons' });
+
+        const cancelBtn = buttonContainer.createEl('button', { text: UI.MODAL_BUTTON_CANCEL });
+        cancelBtn.addEventListener('click', () => {
+            this.onSubmit(null);
+            this.close();
+        });
+
+        const submitBtn = buttonContainer.createEl('button', { text: 'Create', cls: 'mod-cta' });
+        submitBtn.addEventListener('click', () => this.submit());
+
+        input.focus();
+    }
+
+    private submit() {
+        const trimmed = this.result.trim().replace(/\s+/g, '_'); // Replace spaces with underscores
+        if (trimmed && /^\w+$/.test(trimmed)) {
+            this.onSubmit(trimmed);
+        } else {
+            this.onSubmit(null);
+        }
+        this.close();
+    }
+
+    onClose() {
+        const { contentEl } = this;
+        contentEl.empty();
     }
 }
 

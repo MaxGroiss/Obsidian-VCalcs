@@ -94,6 +94,9 @@ export const NOTICES = {
     ERROR_RENAMING_BLOCK: (error: string) => `Error renaming block: ${error}`,
     ERROR_EXECUTING_CALCULATION: (error: string) => `Error executing calculation: ${error}`,
     ERROR_UPDATING_CALCULATION: (error: string) => `Error updating calculation: ${error}`,
+
+    // Simplified error for user-friendly Notice popup
+    CALCULATION_FAILED: 'Calculation failed - check your code',
 };
 
 // =============================================================================
@@ -122,6 +125,7 @@ export const UI = {
     EDITOR_LABEL_BLOCK: 'Block:',
     EDITOR_BUTTON_RENAME: '✏️',
     EDITOR_BUTTON_REFRESH: '↻',
+    EDITOR_BUTTON_DISCONNECT: 'Disconnect',
 
     // --------------------------------------------------------------------------
     // LaTeX Source Section
@@ -166,6 +170,24 @@ export const UI = {
     // Location: main.ts - shown when saved output doesn't match current
     // --------------------------------------------------------------------------
     BADGE_OUTDATED: '⚠️ Saved output (outdated) - <em>click Save to update</em>',
+
+    // --------------------------------------------------------------------------
+    // Editor Settings Panel
+    // Location: editor-view.ts - collapsible block settings panel
+    // --------------------------------------------------------------------------
+    SETTINGS_PANEL_TOGGLE: '⚙',
+    SETTINGS_VSET_LABEL: 'Variable Set',
+    SETTINGS_VSET_NONE: '(none)',
+    SETTINGS_VSET_CREATE_NEW: '+ New...',
+    SETTINGS_BG_LABEL: 'Background',
+    SETTINGS_BG_DEFAULT: 'Default',
+    SETTINGS_BG_TRANSPARENT: 'Transparent',
+    SETTINGS_BG_SUBTLE: 'Subtle',
+    SETTINGS_BG_SOLID: 'Solid',
+    SETTINGS_COMPACT_LABEL: 'Compact',
+    SETTINGS_ACCENT_LABEL: 'Sync Accent',
+    SETTINGS_HIDDEN_LABEL: 'Hidden',
+    SETTINGS_APPLY_BUTTON: 'Apply',
 };
 
 // =============================================================================
@@ -180,6 +202,7 @@ export const TOOLTIPS = {
     UNSAVED_CHANGES: 'Unsaved changes',
     RENAME_BLOCK: 'Rename block',
     REFRESH_BLOCK_LIST: 'Refresh block list',
+    TOGGLE_SETTINGS: 'Toggle block settings panel',
 
     // --------------------------------------------------------------------------
     // Callout Tooltips
@@ -282,7 +305,7 @@ export const SETTINGS = {
     // Setting: Autocomplete Accept Key
     // --------------------------------------------------------------------------
     AUTOCOMPLETE_KEY_NAME: 'Autocomplete Accept Key',
-    AUTOCOMPLETE_KEY_DESC: 'Key to accept autocompletion suggestions in the VCalc Editor',
+    AUTOCOMPLETE_KEY_DESC: 'Key to accept autocompletion suggestions in the VCalc Editor \n Needs VCalc Editor restart to take effect',
 };
 
 // =============================================================================

@@ -41,6 +41,7 @@ export interface CalcBlocksSettings {
     syncAccentWithVset: boolean;
     backgroundStyle: 'default' | 'transparent' | 'subtle' | 'solid';
     compactMode: boolean;
+    autocompleteAcceptKey: 'tab' | 'enter' | 'both';
 }
 
 // Parsed block options

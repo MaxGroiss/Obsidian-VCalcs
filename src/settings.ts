@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import { CalcBlocksSettings } from './types';
 import { VSET_COLORS } from './constants';
+import { SETTINGS } from './messages';
 
 // Interface for what we need from the plugin
 export interface SettingsProvider {
@@ -20,22 +21,22 @@ export class VCalcSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        containerEl.createEl('h2', { text: 'VCalc Settings' });
+        containerEl.createEl('h2', { text: SETTINGS.HEADER_MAIN });
 
         // Info about Pyodide
         const infoEl = containerEl.createEl('div', { cls: 'setting-item-description' });
-        infoEl.innerHTML = '💡 <strong>Python Execution:</strong> VCalc uses Pyodide (Python in WebAssembly) - no Python installation required!';
+        infoEl.innerHTML = SETTINGS.INFO_PYODIDE;
         infoEl.style.marginBottom = '1em';
         infoEl.style.padding = '0.5em';
         infoEl.style.backgroundColor = 'var(--background-secondary)';
         infoEl.style.borderRadius = '4px';
 
         // Behavior Settings Section
-        containerEl.createEl('h3', { text: 'Behavior' });
+        containerEl.createEl('h3', { text: SETTINGS.HEADER_BEHAVIOR });
 
         new Setting(containerEl)
-            .setName('Auto-save on Run')
-            .setDesc('Automatically save LaTeX output to file when running a calculation')
+            .setName(SETTINGS.AUTOSAVE_NAME)
+            .setDesc(SETTINGS.AUTOSAVE_DESC)
             .addToggle(toggle => toggle
                 .setValue(this.provider.settings.autoSaveOnRun)
                 .onChange(async (value) => {
@@ -44,11 +45,11 @@ export class VCalcSettingTab extends PluginSettingTab {
                 }));
 
         // Display Settings Section
-        containerEl.createEl('h3', { text: 'Display Options' });
+        containerEl.createEl('h3', { text: SETTINGS.HEADER_DISPLAY });
 
         new Setting(containerEl)
-            .setName('Show Symbolic Expression')
-            .setDesc('Show the symbolic form of the equation (e.g., z = x + y)')
+            .setName(SETTINGS.SHOW_SYMBOLIC_NAME)
+            .setDesc(SETTINGS.SHOW_SYMBOLIC_DESC)
             .addToggle(toggle => toggle
                 .setValue(this.provider.settings.showSymbolic)
                 .onChange(async (value) => {
@@ -57,8 +58,8 @@ export class VCalcSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Show Substitution Step')
-            .setDesc('Show values substituted into the equation (e.g., z = 5 + 10)')
+            .setName(SETTINGS.SHOW_SUBSTITUTION_NAME)
+            .setDesc(SETTINGS.SHOW_SUBSTITUTION_DESC)
             .addToggle(toggle => toggle
                 .setValue(this.provider.settings.showSubstitution)
                 .onChange(async (value) => {
@@ -67,8 +68,8 @@ export class VCalcSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Show Result')
-            .setDesc('Show the final calculated result (e.g., z = 15)')
+            .setName(SETTINGS.SHOW_RESULT_NAME)
+            .setDesc(SETTINGS.SHOW_RESULT_DESC)
             .addToggle(toggle => toggle
                 .setValue(this.provider.settings.showResult)
                 .onChange(async (value) => {
@@ -77,11 +78,11 @@ export class VCalcSettingTab extends PluginSettingTab {
                 }));
 
         // Appearance Section
-        containerEl.createEl('h3', { text: 'Appearance' });
+        containerEl.createEl('h3', { text: SETTINGS.HEADER_APPEARANCE });
 
         new Setting(containerEl)
-            .setName('Background Style')
-            .setDesc('Control the background opacity of VCalc blocks')
+            .setName(SETTINGS.BACKGROUND_NAME)
+            .setDesc(SETTINGS.BACKGROUND_DESC)
             .addDropdown(dropdown => dropdown
                 .addOption('default', 'Default')
                 .addOption('subtle', 'Subtle')
@@ -94,8 +95,8 @@ export class VCalcSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Compact Mode')
-            .setDesc('Reduce padding and margins for a more compact layout')
+            .setName(SETTINGS.COMPACT_NAME)
+            .setDesc(SETTINGS.COMPACT_DESC)
             .addToggle(toggle => toggle
                 .setValue(this.provider.settings.compactMode)
                 .onChange(async (value) => {
@@ -104,18 +105,34 @@ export class VCalcSettingTab extends PluginSettingTab {
                 }));
 
         // Color Palette Info
-        containerEl.createEl('h3', { text: 'Variable Set Colors' });
-        
+        containerEl.createEl('h3', { text: SETTINGS.HEADER_VSET_COLORS });
+
         new Setting(containerEl)
-            .setName('Sync Accent with VSet Color')
-            .setDesc('Match the callout accent (left border and title) color to the variable set color. Can also be set per-block with "accent:vset" or "accent:default".')
+            .setName(SETTINGS.ACCENT_SYNC_NAME)
+            .setDesc(SETTINGS.ACCENT_SYNC_DESC)
             .addToggle(toggle => toggle
                 .setValue(this.provider.settings.syncAccentWithVset)
                 .onChange(async (value) => {
                     this.provider.settings.syncAccentWithVset = value;
                     await this.provider.saveSettings();
                 }));
-        
+
+        // Editor Settings Section
+        containerEl.createEl('h3', { text: 'Editor' });
+
+        new Setting(containerEl)
+            .setName(SETTINGS.AUTOCOMPLETE_KEY_NAME)
+            .setDesc(SETTINGS.AUTOCOMPLETE_KEY_DESC)
+            .addDropdown(dropdown => dropdown
+                .addOption('tab', 'Tab only')
+                .addOption('enter', 'Enter only')
+                .addOption('both', 'Tab and Enter')
+                .setValue(this.provider.settings.autocompleteAcceptKey)
+                .onChange(async (value) => {
+                    this.provider.settings.autocompleteAcceptKey = value as 'tab' | 'enter' | 'both';
+                    await this.provider.saveSettings();
+                }));
+
         const colorInfo = containerEl.createEl('div', { cls: 'vcalc-color-info' });
         colorInfo.createEl('p', { 
             text: 'Variable sets are automatically assigned colors based on their order of appearance in each note:' 

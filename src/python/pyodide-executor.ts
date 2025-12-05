@@ -1,5 +1,6 @@
 import { VariableSet, PythonResult, DisplayOptions } from '../types';
 import { generateConverterCode, generateConverterCodeWithVars } from './converter';
+import { CONSOLE } from '../messages';
 
 /**
  * Singleton class to manage Pyodide instance and Python execution
@@ -102,9 +103,9 @@ export class PyodideExecutor {
                 indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/'
             });
 
-            console.log('Pyodide loaded successfully in Obsidian/Electron environment');
+            console.log(CONSOLE.PYODIDE_LOADED);
         } catch (error) {
-            console.error('Failed to load Pyodide:', error);
+            console.error(CONSOLE.PYODIDE_FAILED, error);
             throw new Error(`Failed to load Pyodide: ${error}`);
         }
     }

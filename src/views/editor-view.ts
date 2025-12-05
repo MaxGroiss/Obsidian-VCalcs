@@ -1,14 +1,15 @@
-import { ItemView, WorkspaceLeaf, MarkdownView, Notice } from 'obsidian';
+import { ItemView, WorkspaceLeaf, MarkdownView, Notice, Modal, App } from 'obsidian';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, ViewUpdate } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { python } from '@codemirror/lang-python';
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language';
-import { autocompletion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import { autocompletion, CompletionContext, CompletionResult, acceptCompletion } from '@codemirror/autocomplete';
 import { EditorViewPlugin } from '../types';
-import { VCALC_EDITOR_VIEW_TYPE, VCALC_ID_ATTRIBUTE, MATH_FUNCTIONS, MATH_CONSTANTS, GREEK_LETTERS, generateVCalcId, TIMING, RETRY_LIMITS } from '../constants';
+import { VCALC_EDITOR_VIEW_TYPE, VCALC_ID_ATTRIBUTE, MATH_FUNCTIONS, MATH_CONSTANTS, GREEK_LETTERS, generateVCalcId, TIMING, RETRY_LIMITS, SEARCH_LIMITS, UI_CONFIG } from '../constants';
 import { parseVsetFromCodeBlock, buildOptionsLine } from '../callout/parser';
 import { getErrorMessage } from '../utils/type-guards';
+import { NOTICES, UI, TOOLTIPS, STATUS, CONSOLE } from '../messages';
 
 // Block info with ID as primary identifier
 interface BlockInfo {
@@ -33,6 +34,7 @@ export class VCalcEditorView extends ItemView {
     private selectedBlockId: string | null = null;
     private selectedBlockIndex: number = -1;
     private selectedBlockVset: string | null = null;
+    private selectedBlockLine: number = -1;  // Line number in markdown file (for hint-based lookup)
     
     // Editor state
     private isUpdatingEditor: boolean = false;
@@ -72,7 +74,7 @@ export class VCalcEditorView extends ItemView {
         // Header
         const header = container.createEl('div', { cls: 'vcalc-editor-header' });
         const selectorRow = header.createEl('div', { cls: 'vcalc-editor-selector-row' });
-        selectorRow.createEl('span', { text: 'Block:', cls: 'vcalc-editor-label' });
+        selectorRow.createEl('span', { text: UI.EDITOR_LABEL_BLOCK, cls: 'vcalc-editor-label' });
         
         this.blockSelector = selectorRow.createEl('select', { cls: 'vcalc-editor-select' });
         this.blockSelector.addEventListener('change', () => {
@@ -85,11 +87,16 @@ export class VCalcEditorView extends ItemView {
         });
 
         this.dirtyIndicator = selectorRow.createEl('span', { cls: 'vcalc-editor-dirty-indicator' });
-        this.dirtyIndicator.title = 'Unsaved changes';
-        
+        this.dirtyIndicator.title = TOOLTIPS.UNSAVED_CHANGES;
+
+        const renameBtn = selectorRow.createEl('button', { cls: 'vcalc-editor-btn vcalc-editor-rename-btn' });
+        renameBtn.innerHTML = UI.EDITOR_BUTTON_RENAME;
+        renameBtn.title = TOOLTIPS.RENAME_BLOCK;
+        renameBtn.addEventListener('click', () => this.renameCurrentBlock());
+
         const refreshBtn = selectorRow.createEl('button', { cls: 'vcalc-editor-btn vcalc-editor-refresh-btn' });
-        refreshBtn.innerHTML = '↻';
-        refreshBtn.title = 'Refresh block list';
+        refreshBtn.innerHTML = UI.EDITOR_BUTTON_REFRESH;
+        refreshBtn.title = TOOLTIPS.REFRESH_BLOCK_LIST;
         refreshBtn.addEventListener('click', () => this.fullRefresh());
 
         // Editor
@@ -99,10 +106,10 @@ export class VCalcEditorView extends ItemView {
         // Buttons
         const buttonBar = container.createEl('div', { cls: 'vcalc-editor-buttons' });
         
-        const runBtn = buttonBar.createEl('button', { text: 'Run', cls: 'vcalc-editor-btn vcalc-editor-run-btn' });
+        const runBtn = buttonBar.createEl('button', { text: UI.BUTTON_RUN, cls: 'vcalc-editor-btn vcalc-editor-run-btn' });
         runBtn.addEventListener('click', () => this.runCurrentBlock());
-        
-        const saveBtn = buttonBar.createEl('button', { text: 'Save to File', cls: 'vcalc-editor-btn vcalc-editor-save-btn' });
+
+        const saveBtn = buttonBar.createEl('button', { text: UI.BUTTON_SAVE_TO_FILE, cls: 'vcalc-editor-btn vcalc-editor-save-btn' });
         saveBtn.addEventListener('click', () => this.saveToFile());
 
         // Status
@@ -171,6 +178,17 @@ export class VCalcEditorView extends ItemView {
             return { from: word.from, options, validFor: /^\w*$/ };
         };
 
+        // Build autocomplete accept keybindings based on setting
+        const autocompleteKeyBindings: { key: string; run: typeof acceptCompletion }[] = [];
+        const acceptKeySetting = this.plugin.settings.autocompleteAcceptKey;
+
+        if (acceptKeySetting === 'tab' || acceptKeySetting === 'both') {
+            autocompleteKeyBindings.push({ key: 'Tab', run: acceptCompletion });
+        }
+        if (acceptKeySetting === 'enter' || acceptKeySetting === 'both') {
+            autocompleteKeyBindings.push({ key: 'Enter', run: acceptCompletion });
+        }
+
         const startState = EditorState.create({
             doc: '# Select a block to edit',
             extensions: [
@@ -183,6 +201,7 @@ export class VCalcEditorView extends ItemView {
                 syntaxHighlighting(defaultHighlightStyle),
                 autocompletion({ override: [vcalcCompletion] }),
                 keymap.of([
+                    ...autocompleteKeyBindings,
                     ...defaultKeymap,
                     ...historyKeymap,
                     { key: 'Ctrl-Enter', run: () => { this.runCurrentBlock(); return true; } },
@@ -196,7 +215,7 @@ export class VCalcEditorView extends ItemView {
                     }
                 }),
                 EditorView.theme({
-                    '&': { height: '100%', fontSize: '14px' },
+                    '&': { height: '100%', fontSize: `${UI_CONFIG.EDITOR_FONT_SIZE_PX}px` },
                     '.cm-scroller': { overflow: 'auto' },
                     '.cm-content': { fontFamily: 'var(--font-monospace)', padding: '8px 0' },
                     '.cm-line': { padding: '0 8px' }
@@ -242,21 +261,35 @@ export class VCalcEditorView extends ItemView {
         if (!container) {
             return null;
         }
-        
+
         const byAttr = container.querySelector(`.callout[data-callout="vcalc"][${VCALC_ID_ATTRIBUTE}="${id}"]`) as HTMLElement | null;
         if (byAttr) {
             return byAttr;
         }
-        
-        // Fallback: parse each callout's code to find the ID
+
+        // Get all callouts for searching
         const callouts = this.getAllCallouts();
-        for (const callout of callouts) {
+
+        // If we have a cached index hint, check that position first
+        if (this.selectedBlockIndex >= 0 && this.selectedBlockIndex < callouts.length) {
+            const hintCallout = callouts[this.selectedBlockIndex];
+            const { id: blockId } = parseVsetFromCodeBlock(hintCallout);
+            if (blockId === id) {
+                return hintCallout;
+            }
+        }
+
+        // Fallback: parse each callout's code to find the ID
+        for (let i = 0; i < callouts.length; i++) {
+            const callout = callouts[i];
             const { id: blockId } = parseVsetFromCodeBlock(callout);
             if (blockId === id) {
+                // Update cached index for next time
+                this.selectedBlockIndex = i;
                 return callout;
             }
         }
-        
+
         return null;
     }
 
@@ -270,10 +303,18 @@ export class VCalcEditorView extends ItemView {
         // Try by ID first (searches both DOM attr and code)
         if (this.selectedBlockId) {
             const callout = this.getCalloutById(this.selectedBlockId);
-            if (callout) return callout;
+            if (callout) {
+                // Update cached index to current DOM position
+                const callouts = this.getAllCallouts();
+                const newIndex = callouts.indexOf(callout);
+                if (newIndex !== -1) {
+                    this.selectedBlockIndex = newIndex;
+                }
+                return callout;
+            }
         }
-        // Fall back to index
-        if (this.selectedBlockIndex >= 0) {
+        // Only fall back to index if we have no ID (legacy blocks without IDs)
+        if (this.selectedBlockIndex >= 0 && !this.selectedBlockId) {
             return this.getCalloutByIndex(this.selectedBlockIndex);
         }
         return null;
@@ -314,7 +355,7 @@ export class VCalcEditorView extends ItemView {
 
         const indicator = document.createElement('div');
         indicator.className = 'vcalc-editor-mirror-indicator';
-        indicator.innerHTML = '✏️ Editing in VCalc Editor';
+        indicator.innerHTML = UI.MIRROR_INDICATOR;
         mirror.appendChild(indicator);
 
         const codeDisplay = document.createElement('pre');
@@ -378,9 +419,9 @@ export class VCalcEditorView extends ItemView {
         this.blockSelector.empty();
 
         if (!activeFile) {
-            this.blockSelector.createEl('option', { text: 'No active note', value: '-1' });
-            this.setEditorText('# No active note');
-            this.updateStatus('No active note');
+            this.blockSelector.createEl('option', { text: UI.SELECTOR_NO_ACTIVE_NOTE, value: '-1' });
+            this.setEditorText(`# ${UI.SELECTOR_NO_ACTIVE_NOTE}`);
+            this.updateStatus(UI.SELECTOR_NO_ACTIVE_NOTE);
             return;
         }
 
@@ -401,9 +442,9 @@ export class VCalcEditorView extends ItemView {
         }
         
         if (callouts.length === 0) {
-            this.blockSelector.createEl('option', { text: 'No VCalc blocks found', value: '-1' });
-            this.setEditorText('# No VCalc blocks in this note');
-            this.updateStatus('No blocks found');
+            this.blockSelector.createEl('option', { text: UI.SELECTOR_NO_BLOCKS, value: '-1' });
+            this.setEditorText(`# ${UI.SELECTOR_NO_BLOCKS}`);
+            this.updateStatus(UI.SELECTOR_NO_BLOCKS);
             return;
         }
 
@@ -452,8 +493,8 @@ export class VCalcEditorView extends ItemView {
         await this.disconnectFromBlock();
         
         // Wait for Obsidian to re-render after potential file write
-        await new Promise(resolve => setTimeout(resolve, 150));
-        
+        await new Promise(resolve => setTimeout(resolve, TIMING.DOM_STABILIZATION_DELAY_MS));
+
         this.connectToBlock(id, index);
     }
 
@@ -607,15 +648,15 @@ export class VCalcEditorView extends ItemView {
             // Find the block by ID first, then by index
             let targetBlockIndex = -1;
             let currentBlockIndex = -1;
-            
+
             for (let i = 0; i < lines.length; i++) {
                 if (lines[i].match(/^>\s*\[!vcalc\]/i)) {
                     currentBlockIndex++;
-                    
+
                     // Check if this block has our ID
                     let foundById = false;
                     if (this.selectedBlockId) {
-                        for (let j = i + 1; j < lines.length && j < i + 10; j++) {
+                        for (let j = i + 1; j < lines.length && j < i + SEARCH_LIMITS.BLOCK_ID_LOOKAHEAD; j++) {
                             if (lines[j].includes(`id=${this.selectedBlockId}`)) {
                                 foundById = true;
                                 break;
@@ -626,7 +667,8 @@ export class VCalcEditorView extends ItemView {
                     
                     if (foundById || currentBlockIndex === this.selectedBlockIndex) {
                         targetBlockIndex = currentBlockIndex;
-                        
+                        this.selectedBlockLine = i;  // Cache line number for faster lookup
+
                         // Find code block boundaries
                         let codeStart = -1;
                         let codeEnd = -1;
@@ -658,11 +700,11 @@ export class VCalcEditorView extends ItemView {
                 }
             }
 
-            console.error('Could not find block to save');
+            console.error(CONSOLE.COULD_NOT_FIND_BLOCK_SAVE);
             return false;
         } catch (error) {
-            console.error('Error writing to file:', error);
-            new Notice(`Error saving block: ${getErrorMessage(error)}`);
+            console.error(CONSOLE.ERROR_WRITING_FILE, error);
+            new Notice(NOTICES.ERROR_SAVING_BLOCK(getErrorMessage(error)));
             return false;
         }
     }
@@ -674,15 +716,20 @@ export class VCalcEditorView extends ItemView {
         }
 
         if (await this.safeWriteToFile()) {
-            new Notice('Code saved to file');
+            new Notice(NOTICES.CODE_SAVED);
         }
     }
 
     // ==================== Actions ====================
 
+    /**
+     * Run the currently selected block.
+     * After execution, keeps focus in the editor and scrolls to show the output.
+     * Shows execution time and variable count in the status bar.
+     */
     private async runCurrentBlock() {
         if (!this.selectedBlockId && this.selectedBlockIndex < 0) {
-            new Notice('No block selected');
+            new Notice(NOTICES.NO_BLOCK_SELECTED);
             return;
         }
 
@@ -693,28 +740,308 @@ export class VCalcEditorView extends ItemView {
         }
         await this.safeWriteToFile();
 
-        // Wait for Obsidian to process
-        await new Promise(resolve => setTimeout(resolve, 250));
+        // Wait for Obsidian to process the file change
+        await new Promise(resolve => setTimeout(resolve, TIMING.POST_RUN_RERENDER_DELAY_MS));
 
         // Find the Run button
         const callout = this.getSelectedCallout();
         if (!callout) {
-            new Notice('Block not found');
+            new Notice(NOTICES.BLOCK_NOT_FOUND);
             return;
         }
 
         const runBtn = callout.querySelector('.calc-run-btn') as HTMLButtonElement | null;
         if (runBtn) {
+            // Track execution time
+            const startTime = performance.now();
+            this.updateStatus(STATUS.RUNNING);
+
             runBtn.click();
-            this.updateStatus('Executed');
+
+            // Wait for execution to complete and output to render
+            await new Promise(resolve => setTimeout(resolve, TIMING.POST_WRITE_SETTLE_DELAY_MS));
+
+            const executionTime = Math.round(performance.now() - startTime);
+
+            // Focus the VCalc editor to take focus away from the MarkdownView
+            if (this.editorView) {
+                this.editorView.focus();
+            }
+
+            // Scroll the callout's output into view (not the code block)
+            this.scrollToOutput(callout);
+
+            // Check for errors and update status with execution details
+            const { hasError, errorMessage } = this.checkForExecutionError(callout);
+            const variableCount = this.getVariableCount();
+
+            this.updateExecutionStatus(!hasError, executionTime, variableCount, errorMessage);
         } else {
-            new Notice('Run button not found');
+            new Notice(NOTICES.RUN_BUTTON_NOT_FOUND);
         }
     }
 
+    /**
+     * Scroll the markdown view to show the output of a callout.
+     * Scrolls to the output container rather than the code block.
+     */
+    private scrollToOutput(callout: HTMLElement) {
+        // Find the output container (rendered math)
+        const output = callout.querySelector('.calc-output');
+        if (output) {
+            // Scroll the output into view with some margin at the top
+            output.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            // If no output yet, scroll to the callout itself
+            callout.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    /**
+     * Prompt the user to rename the currently selected block.
+     * Updates the callout title in the markdown file.
+     */
+    private async renameCurrentBlock() {
+        if (!this.selectedBlockId && this.selectedBlockIndex < 0) {
+            new Notice(NOTICES.NO_BLOCK_SELECTED);
+            return;
+        }
+
+        const callout = this.getSelectedCallout();
+        if (!callout) {
+            new Notice(NOTICES.BLOCK_NOT_FOUND);
+            return;
+        }
+
+        // Get current title
+        const info = this.getBlockInfoFromCallout(callout, this.selectedBlockIndex);
+        const currentTitle = info.title;
+
+        // Prompt for new title
+        const newTitle = await this.promptForTitle(currentTitle);
+        if (!newTitle || newTitle === currentTitle) {
+            return; // User cancelled or no change
+        }
+
+        // Save any pending changes first
+        if (this.isDirty) {
+            await this.safeWriteToFile();
+        }
+
+        // Update the title in the file
+        const success = await this.updateBlockTitle(newTitle);
+        if (success) {
+            new Notice(NOTICES.BLOCK_RENAMED(newTitle));
+            // Refresh to show new title in dropdown
+            await new Promise(resolve => setTimeout(resolve, TIMING.DOM_STABILIZATION_DELAY_MS));
+            this.fullRefresh();
+        }
+    }
+
+    /**
+     * Show a prompt dialog for entering a new block title.
+     */
+    private promptForTitle(currentTitle: string): Promise<string | null> {
+        return new Promise((resolve) => {
+            const modal = new RenameModal(this.plugin.app, currentTitle, (result) => {
+                resolve(result);
+            });
+            modal.open();
+        });
+    }
+
+    /**
+     * Update the block title in the markdown file.
+     */
+    private async updateBlockTitle(newTitle: string): Promise<boolean> {
+        const activeFile = this.plugin.app.workspace.getActiveFile();
+        if (!activeFile) return false;
+
+        try {
+            let content = await this.plugin.app.vault.read(activeFile);
+            const lines = content.split('\n');
+
+            // Find the block by ID first, then by index
+            let currentBlockIndex = -1;
+
+            for (let i = 0; i < lines.length; i++) {
+                const match = lines[i].match(/^>\s*\[!vcalc\]\s*(.*)/i);
+                if (match) {
+                    currentBlockIndex++;
+
+                    // Check if this block has our ID
+                    let foundById = false;
+                    if (this.selectedBlockId) {
+                        for (let j = i + 1; j < lines.length && j < i + SEARCH_LIMITS.BLOCK_ID_LOOKAHEAD; j++) {
+                            if (lines[j].includes(`id=${this.selectedBlockId}`)) {
+                                foundById = true;
+                                break;
+                            }
+                            if (!lines[j].startsWith('>')) break;
+                        }
+                    }
+
+                    if (foundById || currentBlockIndex === this.selectedBlockIndex) {
+                        // Update the title line
+                        lines[i] = `> [!vcalc] ${newTitle}`;
+                        await this.plugin.app.vault.modify(activeFile, lines.join('\n'));
+                        return true;
+                    }
+                }
+            }
+
+            console.error(CONSOLE.COULD_NOT_FIND_BLOCK_RENAME);
+            return false;
+        } catch (error) {
+            console.error(CONSOLE.ERROR_RENAMING, error);
+            new Notice(NOTICES.ERROR_RENAMING_BLOCK(getErrorMessage(error)));
+            return false;
+        }
+    }
+
+    /**
+     * Update the status bar with a simple message.
+     */
     private updateStatus(message: string) {
         if (this.statusBar) {
             this.statusBar.textContent = message;
+            this.statusBar.className = 'vcalc-editor-status';
         }
+    }
+
+    /**
+     * Update the status bar with execution result information.
+     * Shows success/error status, execution time, and variable count.
+     */
+    private updateExecutionStatus(success: boolean, executionTimeMs: number, variableCount: number, errorMessage?: string) {
+        if (!this.statusBar) return;
+
+        // Clear existing classes and set base class
+        this.statusBar.className = 'vcalc-editor-status';
+
+        if (success) {
+            this.statusBar.classList.add('vcalc-status-success');
+            const timeStr = executionTimeMs < TIMING.MS_SECONDS_THRESHOLD
+                ? `${executionTimeMs}ms`
+                : `${(executionTimeMs / TIMING.MS_SECONDS_THRESHOLD).toFixed(2)}s`;
+
+            const varText = STATUS.VARIABLE_COUNT(variableCount);
+            this.statusBar.textContent = STATUS.SUCCESS(timeStr, varText);
+        } else {
+            this.statusBar.classList.add('vcalc-status-error');
+            const shortError = errorMessage
+                ? (errorMessage.length > UI_CONFIG.ERROR_MESSAGE_MAX_LENGTH ? errorMessage.substring(0, UI_CONFIG.ERROR_MESSAGE_TRUNCATE_TO) + '...' : errorMessage)
+                : STATUS.EXECUTION_FAILED;
+            this.statusBar.textContent = STATUS.ERROR(shortError);
+            this.statusBar.title = errorMessage || STATUS.EXECUTION_FAILED;
+        }
+    }
+
+    /**
+     * Get the number of variables in the current vset.
+     */
+    private getVariableCount(): number {
+        if (!this.selectedBlockVset) return 0;
+
+        const activeFile = this.plugin.app.workspace.getActiveFile();
+        if (!activeFile) return 0;
+
+        const vars = this.plugin.getVariables(activeFile.path, this.selectedBlockVset);
+        return vars ? Object.keys(vars).length : 0;
+    }
+
+    /**
+     * Check if the execution resulted in an error by examining the output.
+     */
+    private checkForExecutionError(callout: HTMLElement): { hasError: boolean; errorMessage?: string } {
+        // Check for error class on output
+        const output = callout.querySelector('.calc-output');
+        if (!output) {
+            return { hasError: false };
+        }
+
+        // Check for error message in output
+        const errorEl = output.querySelector('.calc-error, .error, [class*="error"]');
+        if (errorEl) {
+            return {
+                hasError: true,
+                errorMessage: errorEl.textContent?.trim() || STATUS.EXECUTION_ERROR
+            };
+        }
+
+        // Check if output is empty (might indicate silent failure)
+        const hasContent = output.querySelector('.calc-math-wrapper, .math-block');
+        if (!hasContent && output.textContent?.trim() === '') {
+            return { hasError: false }; // Empty but not necessarily an error
+        }
+
+        return { hasError: false };
+    }
+}
+
+/**
+ * Modal dialog for renaming a block.
+ */
+class RenameModal extends Modal {
+    private result: string;
+    private onSubmit: (result: string | null) => void;
+
+    constructor(app: App, currentTitle: string, onSubmit: (result: string | null) => void) {
+        super(app);
+        this.result = currentTitle;
+        this.onSubmit = onSubmit;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.addClass('vcalc-rename-modal');
+
+        contentEl.createEl('h3', { text: UI.MODAL_RENAME_TITLE });
+
+        const inputContainer = contentEl.createEl('div', { cls: 'vcalc-rename-input-container' });
+        const input = inputContainer.createEl('input', {
+            type: 'text',
+            cls: 'vcalc-rename-input',
+            value: this.result
+        });
+        input.addEventListener('input', (e: Event) => {
+            this.result = (e.target as HTMLInputElement).value;
+        });
+        input.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.submit();
+            }
+        });
+
+        const buttonContainer = contentEl.createEl('div', { cls: 'vcalc-rename-buttons' });
+
+        const cancelBtn = buttonContainer.createEl('button', { text: UI.MODAL_BUTTON_CANCEL });
+        cancelBtn.addEventListener('click', () => {
+            this.onSubmit(null);
+            this.close();
+        });
+
+        const submitBtn = buttonContainer.createEl('button', { text: UI.MODAL_BUTTON_RENAME, cls: 'mod-cta' });
+        submitBtn.addEventListener('click', () => this.submit());
+
+        // Focus the input
+        input.focus();
+        input.select();
+    }
+
+    private submit() {
+        const trimmed = this.result.trim();
+        if (trimmed) {
+            this.onSubmit(trimmed);
+        } else {
+            this.onSubmit(null);
+        }
+        this.close();
+    }
+
+    onClose() {
+        const { contentEl } = this;
+        contentEl.empty();
     }
 }

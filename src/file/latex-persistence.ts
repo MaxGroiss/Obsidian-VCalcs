@@ -1,5 +1,6 @@
 import { App, Notice, MarkdownView } from 'obsidian';
 import { getErrorMessage } from '../utils/type-guards';
+import { NOTICES, CONSOLE } from '../messages';
 
 /**
  * Save LaTeX output for a specific block to the file.
@@ -14,12 +15,12 @@ export async function saveBlockLatexToFile(
     const blockIndex = callout.getAttribute('data-vcalc-index');
     
     if (!latex) {
-        new Notice('No LaTeX output to save. Run the block first.');
+        new Notice(NOTICES.NO_LATEX_TO_SAVE);
         return;
     }
 
     if (blockIndex === null) {
-        new Notice('Could not identify the block. Please run it first.');
+        new Notice(NOTICES.CANNOT_IDENTIFY_BLOCK);
         return;
     }
 
@@ -78,7 +79,7 @@ export async function saveBlockLatexToFile(
         }
         
         if (!foundBlock || codeBlockEnd === -1) {
-            new Notice('Could not find the calculation block in file.');
+            new Notice(NOTICES.CANNOT_FIND_BLOCK_IN_FILE);
             return;
         }
         
@@ -115,10 +116,10 @@ export async function saveBlockLatexToFile(
         // Write back to file
         await app.vault.adapter.write(sourcePath, lines.join('\n'));
         
-        new Notice(`LaTeX saved for "${blockTitle}"`);
+        new Notice(NOTICES.LATEX_SAVED(blockTitle));
     } catch (error) {
-        console.error('Error saving LaTeX to file:', error);
-        new Notice(`Error saving LaTeX: ${getErrorMessage(error)}`);
+        console.error(CONSOLE.ERROR_SAVING_LATEX_FILE, error);
+        new Notice(NOTICES.ERROR_SAVING_LATEX(getErrorMessage(error)));
     }
 }
 
@@ -128,7 +129,7 @@ export async function saveBlockLatexToFile(
 export async function clearAllSavedLatex(app: App): Promise<void> {
     const activeView = app.workspace.getActiveViewOfType(MarkdownView);
     if (!activeView) {
-        new Notice('No active markdown view');
+        new Notice(NOTICES.NO_ACTIVE_VIEW);
         return;
     }
 
@@ -169,13 +170,13 @@ export async function clearAllSavedLatex(app: App): Promise<void> {
         
         if (removedCount > 0) {
             await app.vault.adapter.write(file.path, newLines.join('\n'));
-            new Notice(`Cleared ${removedCount} saved LaTeX output(s) from note!`);
+            new Notice(NOTICES.LATEX_CLEARED_COUNT(removedCount));
         } else {
-            new Notice('No saved LaTeX outputs found in this note.');
+            new Notice(NOTICES.NO_LATEX_IN_NOTE);
         }
     } catch (error) {
-        console.error('Error clearing saved LaTeX:', error);
-        new Notice(`Error clearing LaTeX: ${getErrorMessage(error)}`);
+        console.error(CONSOLE.ERROR_CLEARING_SAVED_LATEX, error);
+        new Notice(NOTICES.ERROR_CLEARING_LATEX(getErrorMessage(error)));
     }
 }
 
@@ -237,12 +238,12 @@ export async function clearBlockSavedLatex(
         if (outputStart !== -1 && outputEnd !== -1) {
             lines.splice(outputStart, outputEnd - outputStart + 1);
             await app.vault.adapter.write(sourcePath, lines.join('\n'));
-            new Notice(`Cleared saved LaTeX for "${blockTitle}"`);
+            new Notice(NOTICES.LATEX_CLEARED(blockTitle));
         } else {
-            new Notice('No saved LaTeX found for this block.');
+            new Notice(NOTICES.NO_LATEX_FOUND);
         }
     } catch (error) {
-        console.error('Error clearing block LaTeX:', error);
-        new Notice(`Error clearing block LaTeX: ${getErrorMessage(error)}`);
+        console.error(CONSOLE.ERROR_CLEARING_BLOCK_LATEX, error);
+        new Notice(NOTICES.ERROR_CLEARING_BLOCK_LATEX(getErrorMessage(error)));
     }
 }

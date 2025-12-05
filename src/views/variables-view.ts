@@ -2,6 +2,7 @@ import { ItemView, WorkspaceLeaf } from 'obsidian';
 import { VariablesViewPlugin } from '../types';
 import { VCALC_VIEW_TYPE } from '../constants';
 import { variableValueToString } from '../utils/type-guards';
+import { UI } from '../messages';
 
 export class VCalcVariablesView extends ItemView {
     private plugin: VariablesViewPlugin;
@@ -38,12 +39,12 @@ export class VCalcVariablesView extends ItemView {
         
         // Header
         const header = container.createEl('div', { cls: 'vcalc-sidebar-header' });
-        header.createEl('h4', { text: 'VCalc Variables' });
-        
+        header.createEl('h4', { text: UI.VARIABLES_TITLE });
+
         // Get active file
         const activeFile = this.plugin.app.workspace.getActiveFile();
         if (!activeFile) {
-            container.createEl('p', { text: 'No active note', cls: 'vcalc-no-vars' });
+            container.createEl('p', { text: UI.VARIABLES_NO_ACTIVE_NOTE, cls: 'vcalc-no-vars' });
             return;
         }
         
@@ -86,7 +87,7 @@ export class VCalcVariablesView extends ItemView {
         const selectedVars = noteVars[this.selectedVset];
         
         if (!selectedVars || Object.keys(selectedVars).length === 0) {
-            varsContainer.createEl('p', { text: 'No variables in this set', cls: 'vcalc-no-vars' });
+            varsContainer.createEl('p', { text: UI.VARIABLES_NO_VARIABLES, cls: 'vcalc-no-vars' });
             return;
         }
         
@@ -96,20 +97,20 @@ export class VCalcVariablesView extends ItemView {
             // Variable name and value
             const varHeader = varEl.createEl('div', { cls: 'vcalc-var-header' });
             varHeader.createEl('span', { text: varName, cls: 'vcalc-var-name' });
-            varHeader.createEl('span', { text: ' = ', cls: 'vcalc-var-equals' });
+            varHeader.createEl('span', { text: UI.VARIABLES_EQUALS, cls: 'vcalc-var-equals' });
             varHeader.createEl('span', {
                 text: variableValueToString(varInfo.value),
                 cls: 'vcalc-var-value'
             });
-            
+
             // Source block
             const sourceEl = varEl.createEl('div', { cls: 'vcalc-var-source' });
-            sourceEl.createEl('span', { text: `↳ ${varInfo.blockTitle}` });
+            sourceEl.createEl('span', { text: `${UI.VARIABLES_SOURCE_PREFIX}${varInfo.blockTitle}` });
         }
         
         // Clear button
         const clearBtn = container.createEl('button', {
-            text: 'Clear All Variables',
+            text: UI.VARIABLES_CLEAR_ALL,
             cls: 'vcalc-clear-btn'
         });
         clearBtn.addEventListener('click', () => {

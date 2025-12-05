@@ -65,12 +65,45 @@ export const TIMING = {
 
     /** Delay before retrying to find blocks in DOM (during initialization) */
     BLOCK_RETRY_DELAY_MS: 100,
+
+    /** Delay to allow DOM to stabilize after selecting a block */
+    DOM_STABILIZATION_DELAY_MS: 150,
+
+    /** Delay after running block to allow DOM to re-render */
+    POST_RUN_RERENDER_DELAY_MS: 250,
+
+    /** Delay after writing to file to allow DOM to settle */
+    POST_WRITE_SETTLE_DELAY_MS: 300,
+
+    /** Duration to show notices (e.g., "Python ready!") */
+    NOTICE_DURATION_MS: 3000,
+
+    /** Threshold for displaying time in milliseconds vs seconds */
+    MS_SECONDS_THRESHOLD: 1000,
 } as const;
 
 // Retry limits
 export const RETRY_LIMITS = {
     /** Maximum number of retries when waiting for blocks to appear in DOM */
     MAX_BLOCK_RETRIES: 3,
+} as const;
+
+// Lookahead/search limits
+export const SEARCH_LIMITS = {
+    /** Maximum lines to search ahead when looking for block ID in file */
+    BLOCK_ID_LOOKAHEAD: 10,
+} as const;
+
+// UI formatting constants
+export const UI_CONFIG = {
+    /** Maximum length for error messages before truncation */
+    ERROR_MESSAGE_MAX_LENGTH: 50,
+
+    /** Length to truncate error messages to (leaving room for "...") */
+    ERROR_MESSAGE_TRUNCATE_TO: 47,
+
+    /** Editor font size in pixels */
+    EDITOR_FONT_SIZE_PX: 14,
 } as const;
 
 // Default plugin settings
@@ -81,5 +114,6 @@ export const DEFAULT_SETTINGS: CalcBlocksSettings = {
     autoSaveOnRun: false,
     syncAccentWithVset: false,
     backgroundStyle: 'default',
-    compactMode: false
+    compactMode: false,
+    autocompleteAcceptKey: 'tab'
 };

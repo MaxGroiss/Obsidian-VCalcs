@@ -10,6 +10,8 @@ import {
   VSET_COLORS,
   TIMING,
   RETRY_LIMITS,
+  SEARCH_LIMITS,
+  UI_CONFIG,
   DEFAULT_SETTINGS,
 } from './constants';
 
@@ -190,6 +192,11 @@ describe('Constants', () => {
       expect(TIMING.IDLE_SAVE_DELAY_MS).toBe(2500);
       expect(TIMING.MIRROR_CHECK_INTERVAL_MS).toBe(300);
       expect(TIMING.BLOCK_RETRY_DELAY_MS).toBe(100);
+      expect(TIMING.DOM_STABILIZATION_DELAY_MS).toBe(150);
+      expect(TIMING.POST_RUN_RERENDER_DELAY_MS).toBe(250);
+      expect(TIMING.POST_WRITE_SETTLE_DELAY_MS).toBe(300);
+      expect(TIMING.NOTICE_DURATION_MS).toBe(3000);
+      expect(TIMING.MS_SECONDS_THRESHOLD).toBe(1000);
     });
 
     it('should have all timing values as positive numbers', () => {
@@ -225,6 +232,35 @@ describe('Constants', () => {
 
     it('should be immutable (as const)', () => {
       expect(RETRY_LIMITS).toHaveProperty('MAX_BLOCK_RETRIES');
+    });
+  });
+
+  describe('SEARCH_LIMITS', () => {
+    it('should have BLOCK_ID_LOOKAHEAD defined', () => {
+      expect(SEARCH_LIMITS.BLOCK_ID_LOOKAHEAD).toBe(10);
+    });
+
+    it('should have positive lookahead limit', () => {
+      expect(SEARCH_LIMITS.BLOCK_ID_LOOKAHEAD).toBeGreaterThan(0);
+    });
+  });
+
+  describe('UI_CONFIG', () => {
+    it('should have all required UI configuration constants', () => {
+      expect(UI_CONFIG.ERROR_MESSAGE_MAX_LENGTH).toBe(50);
+      expect(UI_CONFIG.ERROR_MESSAGE_TRUNCATE_TO).toBe(47);
+      expect(UI_CONFIG.EDITOR_FONT_SIZE_PX).toBe(14);
+    });
+
+    it('should have ERROR_MESSAGE_TRUNCATE_TO less than ERROR_MESSAGE_MAX_LENGTH', () => {
+      expect(UI_CONFIG.ERROR_MESSAGE_TRUNCATE_TO).toBeLessThan(UI_CONFIG.ERROR_MESSAGE_MAX_LENGTH);
+    });
+
+    it('should have all values as positive numbers', () => {
+      Object.values(UI_CONFIG).forEach((value) => {
+        expect(typeof value).toBe('number');
+        expect(value).toBeGreaterThan(0);
+      });
     });
   });
 

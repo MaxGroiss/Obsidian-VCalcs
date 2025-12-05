@@ -39,6 +39,9 @@ import {
 // Type guards
 import { getErrorMessage } from './utils/type-guards';
 
+// Messages
+import { NOTICES, UI, TOOLTIPS, CONSOLE } from './messages';
+
 
 export default class CalcBlocksPlugin extends Plugin {
     settings!: CalcBlocksSettings; // Initialized in onload via loadSettings()
@@ -60,17 +63,17 @@ export default class CalcBlocksPlugin extends Plugin {
         executor.setLoadCallbacks(
             () => {
                 // Show loading notice
-                new Notice('Loading Python environment (first time only)...', 0);
+                new Notice(NOTICES.PYTHON_LOADING, 0);
             },
             () => {
                 // Clear loading notice and show success
                 const notices = document.querySelectorAll('.notice');
                 notices.forEach(notice => {
-                    if (notice.textContent?.includes('Loading Python environment')) {
+                    if (notice.textContent?.includes(NOTICES.PYTHON_LOADING.split('...')[0])) {
                         notice.remove();
                     }
                 });
-                new Notice('Python environment ready!', 3000);
+                new Notice(NOTICES.PYTHON_READY, TIMING.NOTICE_DURATION_MS);
             }
         );
 
@@ -113,7 +116,7 @@ export default class CalcBlocksPlugin extends Plugin {
         // Add settings tab
         this.addSettingTab(new VCalcSettingTab(this.app, this));
 
-        console.log('VCalc plugin loaded');
+        console.log(CONSOLE.PLUGIN_LOADED);
     }
 
     private registerCommands() {
@@ -139,8 +142,8 @@ export default class CalcBlocksPlugin extends Plugin {
                         await this.runCalculationAtCursor(editor, view);
                     }
                 } catch (error) {
-                    console.error('VCalc: Error running calculation at cursor:', error);
-                    new Notice(`Error running calculation: ${getErrorMessage(error)}`);
+                    console.error(CONSOLE.ERROR_RUNNING_AT_CURSOR, error);
+                    new Notice(NOTICES.ERROR_RUNNING_CALCULATION(getErrorMessage(error)));
                 }
             }
         });
@@ -171,7 +174,7 @@ export default class CalcBlocksPlugin extends Plugin {
                 const activeFile = this.app.workspace.getActiveFile();
                 if (activeFile) {
                     this.clearNoteVariables(activeFile.path);
-                    new Notice('Variables cleared for ' + activeFile.basename);
+                    new Notice(NOTICES.VARIABLES_CLEARED(activeFile.basename));
                 }
             }
         });
@@ -184,8 +187,8 @@ export default class CalcBlocksPlugin extends Plugin {
                 try {
                     await this.runAllBlocks();
                 } catch (error) {
-                    console.error('VCalc: Error running all blocks:', error);
-                    new Notice(`Error running all blocks: ${getErrorMessage(error)}`);
+                    console.error(CONSOLE.ERROR_RUNNING_ALL, error);
+                    new Notice(NOTICES.ERROR_RUNNING_ALL_BLOCKS(getErrorMessage(error)));
                 }
             }
         });
@@ -198,8 +201,8 @@ export default class CalcBlocksPlugin extends Plugin {
                 try {
                     await this.saveAllLatexToFile();
                 } catch (error) {
-                    console.error('VCalc: Error saving all LaTeX:', error);
-                    new Notice(`Error saving all LaTeX: ${getErrorMessage(error)}`);
+                    console.error(CONSOLE.ERROR_SAVING_ALL, error);
+                    new Notice(NOTICES.ERROR_SAVING_LATEX(getErrorMessage(error)));
                 }
             }
         });
@@ -213,8 +216,8 @@ export default class CalcBlocksPlugin extends Plugin {
                     await this.runAllBlocks();
                     await this.saveAllLatexToFile();
                 } catch (error) {
-                    console.error('VCalc: Error running and saving all:', error);
-                    new Notice(`Error running and saving all: ${getErrorMessage(error)}`);
+                    console.error(CONSOLE.ERROR_RUN_AND_SAVE, error);
+                    new Notice(NOTICES.ERROR_RUNNING_ALL_BLOCKS(getErrorMessage(error)));
                 }
             }
         });
@@ -371,7 +374,7 @@ export default class CalcBlocksPlugin extends Plugin {
                 const vsetBadge = document.createElement('span');
                 vsetBadge.className = 'calc-vset-badge';
                 vsetBadge.textContent = vset;
-                vsetBadge.title = `Variable Set: ${vset}`;
+                vsetBadge.title = TOOLTIPS.VSET_BADGE(vset);
                 vsetBadge.setAttribute('data-vset-color', color.name);
                 vsetBadge.style.setProperty('--vset-color', color.rgb);
                 btnGroup.appendChild(vsetBadge);
@@ -381,8 +384,8 @@ export default class CalcBlocksPlugin extends Plugin {
             const toggleCodeBtn = document.createElement('button');
             toggleCodeBtn.className = 'calc-toggle-btn';
             if (hidden) toggleCodeBtn.classList.add('calc-btn-active');
-            toggleCodeBtn.textContent = '< >';
-            toggleCodeBtn.title = 'Toggle Code (add "hidden" to options to persist)';
+            toggleCodeBtn.textContent = UI.BUTTON_TOGGLE_CODE;
+            toggleCodeBtn.title = TOOLTIPS.TOGGLE_CODE;
             toggleCodeBtn.addEventListener('click', () => {
                 const preEl = callout.querySelector('pre');
                 if (preEl) {
@@ -395,7 +398,7 @@ export default class CalcBlocksPlugin extends Plugin {
             // Run button
             const runBtn = document.createElement('button');
             runBtn.className = 'calc-run-btn';
-            runBtn.textContent = 'Run';
+            runBtn.textContent = UI.BUTTON_RUN;
             runBtn.addEventListener('click', async () => {
                 try {
                     const allCallouts = document.querySelectorAll('.callout[data-callout="vcalc"]');
@@ -409,11 +412,11 @@ export default class CalcBlocksPlugin extends Plugin {
                     callout.setAttribute('data-vcalc-index', String(blockIndex));
 
                     const { code: pythonCode, vset: currentVset } = parseVsetFromCodeBlock(callout);
-                    console.log('VCalc: Running block', blockIndex, 'with vset:', currentVset);
+                    console.log(CONSOLE.RUNNING_BLOCK(blockIndex, currentVset));
                     await this.executeAndRender(pythonCode, callout, context, currentVset);
                 } catch (error) {
-                    console.error('VCalc: Error running block:', error);
-                    new Notice(`Error running calculation: ${getErrorMessage(error)}`);
+                    console.error(CONSOLE.ERROR_RUNNING_BLOCK, error);
+                    new Notice(NOTICES.ERROR_RUNNING_CALCULATION(getErrorMessage(error)));
                 }
             });
             btnGroup.appendChild(runBtn);
@@ -421,8 +424,8 @@ export default class CalcBlocksPlugin extends Plugin {
             // Clear button
             const clearBtn = document.createElement('button');
             clearBtn.className = 'calc-clear-title-btn';
-            clearBtn.textContent = '✕';
-            clearBtn.title = 'Clear saved LaTeX from file';
+            clearBtn.textContent = UI.BUTTON_CLEAR_LATEX;
+            clearBtn.title = TOOLTIPS.CLEAR_SAVED_LATEX;
             clearBtn.addEventListener('click', async () => {
                 try {
                     const allCallouts = document.querySelectorAll('.callout[data-callout="vcalc"]');
@@ -439,8 +442,8 @@ export default class CalcBlocksPlugin extends Plugin {
                     const outdatedWrappers = callout.querySelectorAll('.calc-saved-outdated');
                     outdatedWrappers.forEach((wrapper) => wrapper.remove());
                 } catch (error) {
-                    console.error('VCalc: Error clearing saved LaTeX:', error);
-                    new Notice(`Error clearing saved LaTeX: ${getErrorMessage(error)}`);
+                    console.error(CONSOLE.ERROR_CLEARING_LATEX, error);
+                    new Notice(NOTICES.ERROR_CLEARING_LATEX(getErrorMessage(error)));
                 }
             });
             btnGroup.appendChild(clearBtn);
@@ -508,7 +511,7 @@ export default class CalcBlocksPlugin extends Plugin {
                     
                     const badge = document.createElement('div');
                     badge.className = 'calc-outdated-badge';
-                    badge.innerHTML = '⚠️ Saved output (outdated) - <em>click Save to update</em>';
+                    badge.innerHTML = UI.BADGE_OUTDATED;
                     wrapper.appendChild(badge);
                     
                     mathBlock.parentNode?.insertBefore(wrapper, mathBlock);
@@ -548,7 +551,7 @@ export default class CalcBlocksPlugin extends Plugin {
             detailsEl.className = 'calc-latex-source';
             
             const summaryEl = document.createElement('summary');
-            summaryEl.textContent = 'LaTeX Source';
+            summaryEl.textContent = UI.LATEX_SOURCE_SUMMARY;
             detailsEl.appendChild(summaryEl);
             
             const sourceContainer = document.createElement('div');
@@ -567,19 +570,19 @@ export default class CalcBlocksPlugin extends Plugin {
             // Copy button
             const copyBtn = document.createElement('button');
             copyBtn.className = 'calc-copy-btn';
-            copyBtn.textContent = 'Copy LaTeX';
+            copyBtn.textContent = UI.BUTTON_COPY_LATEX;
             copyBtn.addEventListener('click', async () => {
                 try {
                     if (!navigator.clipboard) {
                         throw new Error('Clipboard API not available');
                     }
                     await navigator.clipboard.writeText(`$$\n${latex}\n$$`);
-                    copyBtn.textContent = 'Copied!';
-                    setTimeout(() => { copyBtn.textContent = 'Copy LaTeX'; }, TIMING.UI_FEEDBACK_RESET_MS);
+                    copyBtn.textContent = UI.BUTTON_COPIED;
+                    setTimeout(() => { copyBtn.textContent = UI.BUTTON_COPY_LATEX; }, TIMING.UI_FEEDBACK_RESET_MS);
                 } catch (error) {
-                    console.error('VCalc: Error copying to clipboard:', error);
-                    new Notice(`Error copying to clipboard: ${getErrorMessage(error)}`);
-                    copyBtn.textContent = 'Copy LaTeX';
+                    console.error(CONSOLE.ERROR_COPYING, error);
+                    new Notice(NOTICES.ERROR_COPYING_CLIPBOARD(getErrorMessage(error)));
+                    copyBtn.textContent = UI.BUTTON_COPY_LATEX;
                 }
             });
             btnContainer.appendChild(copyBtn);
@@ -587,20 +590,20 @@ export default class CalcBlocksPlugin extends Plugin {
             // Save button
             const saveBtn = document.createElement('button');
             saveBtn.className = 'calc-save-btn';
-            saveBtn.textContent = 'Save to File';
+            saveBtn.textContent = UI.BUTTON_SAVE_TO_FILE;
             saveBtn.addEventListener('click', async () => {
                 try {
                     await saveBlockLatexToFile(this.app, callout, context.sourcePath, blockTitle);
-                    saveBtn.textContent = 'Saved!';
+                    saveBtn.textContent = UI.BUTTON_SAVED;
 
                     const outdatedWrappers = callout.querySelectorAll('.calc-saved-outdated');
                     outdatedWrappers.forEach((wrapper) => wrapper.remove());
 
-                    setTimeout(() => { saveBtn.textContent = 'Save to File'; }, TIMING.UI_FEEDBACK_RESET_MS);
+                    setTimeout(() => { saveBtn.textContent = UI.BUTTON_SAVE_TO_FILE; }, TIMING.UI_FEEDBACK_RESET_MS);
                 } catch (error) {
-                    console.error('VCalc: Error saving to file:', error);
-                    new Notice(`Error saving to file: ${getErrorMessage(error)}`);
-                    saveBtn.textContent = 'Save to File';
+                    console.error(CONSOLE.ERROR_SAVING, error);
+                    new Notice(NOTICES.ERROR_SAVING_FILE(getErrorMessage(error)));
+                    saveBtn.textContent = UI.BUTTON_SAVE_TO_FILE;
                 }
             });
             btnContainer.appendChild(saveBtn);
@@ -609,15 +612,15 @@ export default class CalcBlocksPlugin extends Plugin {
             detailsEl.appendChild(sourceContainer);
             outputContainer.appendChild(detailsEl);
 
-            new Notice('Calculation rendered!');
-            
+            new Notice(NOTICES.CALCULATION_RENDERED);
+
             // Auto-save if enabled
             if (this.settings.autoSaveOnRun) {
                 await saveBlockLatexToFile(this.app, callout, context.sourcePath, blockTitle);
             }
         } catch (error) {
-            new Notice(`Error executing calculation: ${getErrorMessage(error)}`);
-            console.error('VCalc error:', error);
+            new Notice(NOTICES.ERROR_EXECUTING_CALCULATION(getErrorMessage(error)));
+            console.error(CONSOLE.VCALC_ERROR, error);
         }
     }
 
@@ -626,19 +629,19 @@ export default class CalcBlocksPlugin extends Plugin {
     async runAllBlocks() {
         const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (!activeView) {
-            new Notice('No active markdown view');
+            new Notice(NOTICES.NO_ACTIVE_VIEW);
             return;
         }
 
         const container = activeView.containerEl;
         const callouts = container.querySelectorAll('.callout[data-callout="vcalc"]');
-        
+
         if (callouts.length === 0) {
-            new Notice('No VCalc blocks found in this note');
+            new Notice(NOTICES.NO_BLOCKS_IN_NOTE);
             return;
         }
 
-        new Notice(`Running ${callouts.length} VCalc block(s)...`);
+        new Notice(NOTICES.RUNNING_BLOCKS(callouts.length));
         
         const file = activeView.file;
         if (!file) return;
@@ -662,18 +665,18 @@ export default class CalcBlocksPlugin extends Plugin {
                     await this.executeAndRender(code, callout, context, vset);
                     await new Promise(resolve => setTimeout(resolve, TIMING.INTER_BLOCK_DELAY_MS));
                 } catch (error) {
-                    console.error(`Error running block ${i + 1}:`, error);
+                    console.error(CONSOLE.ERROR_RUNNING_BLOCK_NUM(i + 1), error);
                 }
             }
         }
-        
-        new Notice('All VCalc blocks executed!');
+
+        new Notice(NOTICES.ALL_BLOCKS_EXECUTED);
     }
 
     async saveAllLatexToFile() {
         const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (!activeView) {
-            new Notice('No active markdown view');
+            new Notice(NOTICES.NO_ACTIVE_VIEW);
             return;
         }
 
@@ -696,9 +699,9 @@ export default class CalcBlocksPlugin extends Plugin {
         }
         
         if (savedCount === 0) {
-            new Notice('No rendered outputs to save. Run blocks first.');
+            new Notice(NOTICES.NO_OUTPUTS_TO_SAVE);
         } else {
-            new Notice(`Saved ${savedCount} LaTeX output(s) to file!`);
+            new Notice(NOTICES.LATEX_SAVED_COUNT(savedCount));
         }
     }
 
@@ -727,17 +730,17 @@ export default class CalcBlocksPlugin extends Plugin {
         }
         
         if (calloutStart === -1) {
-            new Notice('Cursor is not inside a calculation block');
+            new Notice(NOTICES.CURSOR_NOT_IN_BLOCK);
             return;
         }
-        
+
         if (calloutEnd === -1) calloutEnd = lines.length;
-        
+
         const calloutLines = lines.slice(calloutStart, calloutEnd);
         const codeMatch = calloutLines.join('\n').match(/```python\n([\s\S]*?)```/);
-        
+
         if (!codeMatch) {
-            new Notice('No Python code found in calculation block');
+            new Notice(NOTICES.NO_CODE_IN_BLOCK);
             return;
         }
         
@@ -779,10 +782,10 @@ export default class CalcBlocksPlugin extends Plugin {
             }
             
             editor.setValue(lines.join('\n'));
-            new Notice('Calculation updated!');
-            
+            new Notice(NOTICES.CALCULATION_UPDATED);
+
         } catch (error) {
-            new Notice(`Error updating calculation: ${getErrorMessage(error)}`);
+            new Notice(NOTICES.ERROR_UPDATING_CALCULATION(getErrorMessage(error)));
         }
     }
 
@@ -818,6 +821,6 @@ export default class CalcBlocksPlugin extends Plugin {
             (pre as HTMLElement).style.display = '';
         });
 
-        console.log('VCalc plugin unloaded');
+        console.log(CONSOLE.PLUGIN_UNLOADED);
     }
 }

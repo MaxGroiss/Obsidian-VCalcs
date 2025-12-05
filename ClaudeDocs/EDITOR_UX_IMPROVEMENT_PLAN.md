@@ -257,47 +257,44 @@ Show variables created/modified by the block:
 
 ---
 
-### Phase 6: Variable Store Cleanup
+### Phase 6: Variable Store Cleanup ✅ COMPLETED
 **Priority: High | Effort: Medium**
+**Status: Implemented December 2024**
 
 #### 6.1 Problem Statement
 When a variable is deleted from a code block and the block is re-run, the variable persists in the Variables View. This creates stale data that can confuse users and cause unexpected behavior in other blocks using the same variable set.
 
-#### 6.2 Complexity
-This is non-trivial because:
-- A variable might be defined in **multiple blocks** within the same variable set
-- Deleting from one block shouldn't remove it if another block still defines it
-- Need to track which block(s) define each variable
-
-#### 6.3 Proposed Solutions
-
-**Option A: Per-Block Variable Tracking**
-- Store variable source (block ID) alongside value
-- On block run, clear only variables from that block, then re-add new ones
+#### 6.2 Solution: Per-Block Variable Tracking (Option A)
+Implemented the "last definer wins" approach:
+- Added `sourceBlockId` field to `VariableInfo` type
+- On block run, clear variables owned by that block before adding new ones
 - Variables from other blocks remain untouched
+- If Block B redefines a variable originally from Block A, Block B becomes the owner
 
-**Option B: Full VSet Rebuild**
-- On any block run, scan ALL blocks with same vset
-- Rebuild the entire variable set from scratch
-- More expensive but simpler logic
+#### 6.3 Implementation Details
 
-**Option C: Reference Counting**
-- Track how many blocks define each variable
-- Only remove when count reaches zero
-- Complex but memory efficient
+**Type Changes:**
+- Added `sourceBlockId: string | null` to `VariableInfo` in [types.ts](src/types.ts)
 
-#### 6.4 Recommended Approach: Option A
-1. Extend `VariableInfo` type to include `sourceBlockId: string`
-2. In `pythonToLatexWithVars`, return which variables were defined
-3. Before merging new variables, remove old ones from same block ID
-4. Update Variables View to show source block (already partially implemented)
+**Store Functions:**
+- Extended `updateVariable()` to accept optional `blockId` parameter
+- Added `removeBlockVariables()` to clear variables by block ID
+- Located in [variable-store.ts](src/stores/variable-store.ts)
 
-#### 6.5 Implementation Tasks
-- [ ] Modify variable store structure to track source block ID
-- [ ] Update Python executor to return list of defined variables
-- [ ] Implement cleanup logic in main.ts `processCallout()`
-- [ ] Handle edge cases (block deleted, block ID changed, etc.)
-- [ ] Add tests for variable cleanup scenarios
+**Execution Flow:**
+- `executeAndRender()` now accepts `blockId` parameter
+- Before adding new variables, calls `removeBlockVariables()` to clear old ones
+- Passes `blockId` to `updateVariable()` when storing variables
+- Located in [main.ts](src/main.ts)
+
+**Tests:**
+- 8 new tests for `removeBlockVariables()` covering:
+  - Removing all variables from a specific block
+  - Not affecting variables from other blocks
+  - Handling non-existent notes/vsets
+  - Handling null sourceBlockId
+  - Last definer wins scenario
+- Located in [variable-store.test.ts](src/stores/variable-store.test.ts)
 
 ---
 
@@ -335,11 +332,9 @@ This is non-trivial because:
 4. ~~**Block Settings Panel**~~ - Phase 2
 5. ~~**Disconnect Button**~~ - Phase 2
 6. ~~**Simplified Error Messages**~~ - Phase 2
+7. ~~**Variable Store Cleanup**~~ - Phase 6
 
-### Immediate (Next Sprint)
-7. **Variable Store Cleanup** - Phase 6 (High priority - data integrity issue)
-
-### Short-Term
+### Short-Term (Next Sprint)
 8. **Math Reference Panel** - Phase 3
 9. **Improved Toolbar** - Phase 4
 10. **Execution Feedback** - Phase 5
@@ -403,12 +398,21 @@ styles.css additions:
 
 ---
 
-**Document Version**: 1.2
+**Document Version**: 1.3
 **Created**: December 2024
 **Last Updated**: December 2024
-**Status**: Phase 1-2 Complete, Phase 6 Next Priority
+**Status**: Phase 1-2, Phase 6 Complete
 
 ### Changelog
+
+#### v1.3 (December 2024)
+- Phase 6 implemented: Variable Store Cleanup
+  - Added `sourceBlockId` field to `VariableInfo` type
+  - Added `removeBlockVariables()` function to variable store
+  - Updated `executeAndRender()` to pass blockId and clean up old variables
+  - "Last definer wins" approach: when Block B redefines a variable from Block A, Block B owns it
+  - 8 new unit tests for variable cleanup scenarios
+  - Variables now properly removed when deleted from code and block is re-run
 
 #### v1.2 (December 2024)
 - Phase 2 implemented: Block Settings Panel

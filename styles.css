@@ -81,10 +81,32 @@
     font-family: var(--font-monospace);
 }
 
+/* VCalc logo in button group (spacer for Obsidian edit button) */
+.vcalc-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px;
+    opacity: 0.5;
+    transition: opacity 0.15s ease;
+}
+
+.vcalc-logo svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
+.vcalc-logo:hover {
+    opacity: 0.8;
+}
+
 /* Common button styles */
 .calc-run-btn,
 .calc-toggle-btn,
-.calc-copy-btn {
+.calc-copy-btn,
+.calc-clear-title-btn,
+.calc-copy-block-btn {
     padding: 4px 10px;
     font-size: 12px;
     border-radius: 4px;
@@ -94,19 +116,52 @@
     cursor: pointer;
     transition: all 0.15s ease;
     font-family: var(--font-interface);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
 }
 
 .calc-run-btn:hover,
 .calc-toggle-btn:hover,
-.calc-copy-btn:hover {
+.calc-copy-btn:hover,
+.calc-clear-title-btn:hover,
+.calc-copy-block-btn:hover {
     background-color: rgba(var(--callout-color), 0.3);
     border-color: rgb(var(--callout-color));
 }
 
 .calc-run-btn:active,
 .calc-toggle-btn:active,
-.calc-copy-btn:active {
+.calc-copy-btn:active,
+.calc-clear-title-btn:active,
+.calc-copy-block-btn:active {
     transform: scale(0.95);
+}
+
+/* Icon-only buttons in callout title bar */
+.calc-icon-btn {
+    padding: 4px 6px;
+    min-width: 28px;
+    height: 28px;
+}
+
+.calc-icon-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Buttons with icon + text */
+.calc-text-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.calc-text-btn svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
 }
 
 /* Toggle button active state */
@@ -753,13 +808,37 @@
 }
 
 /* =====================================================
-   VCALC EDITOR - RENAME BUTTON
+   VCALC EDITOR - ICON BUTTONS
    ===================================================== */
 
-.vcalc-editor-rename-btn {
+.vcalc-editor-icon-btn {
     padding: 4px 8px !important;
-    font-size: 14px !important;
     min-width: auto !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vcalc-editor-icon-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Buttons with icon + text in editor */
+.vcalc-editor-run-btn,
+.vcalc-editor-save-btn,
+.vcalc-editor-disconnect-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.vcalc-editor-run-btn svg,
+.vcalc-editor-save-btn svg,
+.vcalc-editor-disconnect-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
 }
 
 /* =====================================================

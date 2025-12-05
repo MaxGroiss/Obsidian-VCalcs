@@ -115,5 +115,10 @@ export const DEFAULT_SETTINGS: CalcBlocksSettings = {
     syncAccentWithVset: false,
     backgroundStyle: 'default',
     compactMode: false,
-    autocompleteAcceptKey: 'tab'
+    autocompleteAcceptKey: 'tab',
+    // Callout button visibility - all visible by default
+    showRunButton: true,
+    showToggleCodeButton: true,
+    showClearButton: true,
+    showCopyBlockButton: true
 };

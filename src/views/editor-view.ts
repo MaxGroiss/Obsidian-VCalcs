@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, MarkdownView, Notice, Modal, App } from 'obsidian';
+import { ItemView, WorkspaceLeaf, MarkdownView, Notice, Modal, App, setIcon } from 'obsidian';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, ViewUpdate } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
@@ -85,7 +85,7 @@ export class VCalcEditorView extends ItemView {
     }
 
     getIcon(): string {
-        return 'code';
+        return 'vcalc-editor';
     }
 
     async onOpen() {
@@ -111,19 +111,19 @@ export class VCalcEditorView extends ItemView {
         this.dirtyIndicator = selectorRow.createEl('span', { cls: 'vcalc-editor-dirty-indicator' });
         this.dirtyIndicator.title = TOOLTIPS.UNSAVED_CHANGES;
 
-        const renameBtn = selectorRow.createEl('button', { cls: 'vcalc-editor-btn vcalc-editor-rename-btn' });
-        renameBtn.innerHTML = UI.EDITOR_BUTTON_RENAME;
+        const renameBtn = selectorRow.createEl('button', { cls: 'vcalc-editor-btn vcalc-editor-rename-btn vcalc-editor-icon-btn' });
+        setIcon(renameBtn, 'pencil');
         renameBtn.title = TOOLTIPS.RENAME_BLOCK;
         renameBtn.addEventListener('click', () => this.renameCurrentBlock());
 
-        const refreshBtn = selectorRow.createEl('button', { cls: 'vcalc-editor-btn vcalc-editor-refresh-btn' });
-        refreshBtn.innerHTML = UI.EDITOR_BUTTON_REFRESH;
+        const refreshBtn = selectorRow.createEl('button', { cls: 'vcalc-editor-btn vcalc-editor-refresh-btn vcalc-editor-icon-btn' });
+        setIcon(refreshBtn, 'refresh-cw');
         refreshBtn.title = TOOLTIPS.REFRESH_BLOCK_LIST;
         refreshBtn.addEventListener('click', () => this.fullRefresh());
 
         // Settings toggle button
-        this.settingsToggleBtn = selectorRow.createEl('button', { cls: 'vcalc-editor-btn vcalc-editor-settings-btn' });
-        this.settingsToggleBtn.innerHTML = UI.SETTINGS_PANEL_TOGGLE;
+        this.settingsToggleBtn = selectorRow.createEl('button', { cls: 'vcalc-editor-btn vcalc-editor-settings-btn vcalc-editor-icon-btn' });
+        setIcon(this.settingsToggleBtn, 'settings');
         this.settingsToggleBtn.title = TOOLTIPS.TOGGLE_SETTINGS;
         this.settingsToggleBtn.addEventListener('click', () => this.toggleSettingsPanel());
 
@@ -139,13 +139,22 @@ export class VCalcEditorView extends ItemView {
         // Buttons
         const buttonBar = container.createEl('div', { cls: 'vcalc-editor-buttons' });
 
-        const runBtn = buttonBar.createEl('button', { text: UI.BUTTON_RUN, cls: 'vcalc-editor-btn vcalc-editor-run-btn' });
+        const runBtn = buttonBar.createEl('button', { cls: 'vcalc-editor-btn vcalc-editor-run-btn' });
+        setIcon(runBtn, 'play');
+        runBtn.appendChild(document.createTextNode(' ' + UI.BUTTON_RUN));
+        runBtn.title = 'Run calculation (Ctrl+Enter)';
         runBtn.addEventListener('click', () => this.runCurrentBlock());
 
-        const saveBtn = buttonBar.createEl('button', { text: UI.BUTTON_SAVE_TO_FILE, cls: 'vcalc-editor-btn vcalc-editor-save-btn' });
+        const saveBtn = buttonBar.createEl('button', { cls: 'vcalc-editor-btn vcalc-editor-save-btn' });
+        setIcon(saveBtn, 'save');
+        saveBtn.appendChild(document.createTextNode(' ' + UI.BUTTON_SAVE_TO_FILE));
+        saveBtn.title = 'Save LaTeX output to file';
         saveBtn.addEventListener('click', () => this.saveLatexToFile());
 
-        const disconnectBtn = buttonBar.createEl('button', { text: UI.EDITOR_BUTTON_DISCONNECT, cls: 'vcalc-editor-btn vcalc-editor-disconnect-btn' });
+        const disconnectBtn = buttonBar.createEl('button', { cls: 'vcalc-editor-btn vcalc-editor-disconnect-btn' });
+        setIcon(disconnectBtn, 'unplug');
+        disconnectBtn.appendChild(document.createTextNode(' ' + UI.EDITOR_BUTTON_DISCONNECT));
+        disconnectBtn.title = 'Disconnect from current block';
         disconnectBtn.addEventListener('click', () => this.handleDisconnect());
 
         // Status

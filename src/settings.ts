@@ -133,6 +133,49 @@ export class VCalcSettingTab extends PluginSettingTab {
                     await this.provider.saveSettings();
                 }));
 
+        // Button Visibility Section
+        containerEl.createEl('h3', { text: SETTINGS.HEADER_BUTTON_VISIBILITY });
+
+        new Setting(containerEl)
+            .setName(SETTINGS.SHOW_RUN_BUTTON_NAME)
+            .setDesc(SETTINGS.SHOW_RUN_BUTTON_DESC)
+            .addToggle(toggle => toggle
+                .setValue(this.provider.settings.showRunButton)
+                .onChange(async (value) => {
+                    this.provider.settings.showRunButton = value;
+                    await this.provider.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(SETTINGS.SHOW_TOGGLE_CODE_NAME)
+            .setDesc(SETTINGS.SHOW_TOGGLE_CODE_DESC)
+            .addToggle(toggle => toggle
+                .setValue(this.provider.settings.showToggleCodeButton)
+                .onChange(async (value) => {
+                    this.provider.settings.showToggleCodeButton = value;
+                    await this.provider.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(SETTINGS.SHOW_CLEAR_BUTTON_NAME)
+            .setDesc(SETTINGS.SHOW_CLEAR_BUTTON_DESC)
+            .addToggle(toggle => toggle
+                .setValue(this.provider.settings.showClearButton)
+                .onChange(async (value) => {
+                    this.provider.settings.showClearButton = value;
+                    await this.provider.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(SETTINGS.SHOW_COPY_BLOCK_NAME)
+            .setDesc(SETTINGS.SHOW_COPY_BLOCK_DESC)
+            .addToggle(toggle => toggle
+                .setValue(this.provider.settings.showCopyBlockButton)
+                .onChange(async (value) => {
+                    this.provider.settings.showCopyBlockButton = value;
+                    await this.provider.saveSettings();
+                }));
+
         const colorInfo = containerEl.createEl('div', { cls: 'vcalc-color-info' });
         colorInfo.createEl('p', { 
             text: 'Variable sets are automatically assigned colors based on their order of appearance in each note:' 

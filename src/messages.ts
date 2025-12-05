@@ -67,6 +67,7 @@ export const NOTICES = {
     BLOCK_NOT_FOUND: 'Block not found',
     RUN_BUTTON_NOT_FOUND: 'Run button not found',
     BLOCK_RENAMED: (newTitle: string) => `Block renamed to "${newTitle}"`,
+    BLOCK_COPIED: 'Block copied to clipboard (with new ID)',
 
     // --------------------------------------------------------------------------
     // Cursor/Context Errors
@@ -111,6 +112,7 @@ export const UI = {
     BUTTON_RUN: 'Run',
     BUTTON_TOGGLE_CODE: '<🡙>',
     BUTTON_CLEAR_LATEX: '✕',
+    BUTTON_COPY_BLOCK: '📋',
     BUTTON_COPY_LATEX: 'Copy LaTeX',
     BUTTON_SAVE_TO_FILE: 'Save to File',
 
@@ -210,6 +212,7 @@ export const TOOLTIPS = {
     // --------------------------------------------------------------------------
     TOGGLE_CODE: 'Toggle Code (add "hidden" to options to persist)',
     CLEAR_SAVED_LATEX: 'Clear saved LaTeX from file',
+    COPY_BLOCK: 'Copy block with new ID',
     VSET_BADGE: (vset: string) => `Variable Set: ${vset}`,
 };
 
@@ -306,6 +309,19 @@ export const SETTINGS = {
     // --------------------------------------------------------------------------
     AUTOCOMPLETE_KEY_NAME: 'Autocomplete Accept Key',
     AUTOCOMPLETE_KEY_DESC: 'Key to accept autocompletion suggestions in the VCalc Editor \n Needs VCalc Editor restart to take effect',
+
+    // --------------------------------------------------------------------------
+    // Callout Button Visibility
+    // --------------------------------------------------------------------------
+    HEADER_BUTTON_VISIBILITY: 'Callout Buttons',
+    SHOW_RUN_BUTTON_NAME: 'Show Run Button',
+    SHOW_RUN_BUTTON_DESC: 'Show the Run button on VCalc blocks',
+    SHOW_TOGGLE_CODE_NAME: 'Show Toggle Code Button',
+    SHOW_TOGGLE_CODE_DESC: 'Show the button to toggle code visibility',
+    SHOW_CLEAR_BUTTON_NAME: 'Show Clear Button',
+    SHOW_CLEAR_BUTTON_DESC: 'Show the button to clear saved LaTeX output',
+    SHOW_COPY_BLOCK_NAME: 'Show Copy Block Button',
+    SHOW_COPY_BLOCK_DESC: 'Show the button to copy block with new ID',
 };
 
 // =============================================================================

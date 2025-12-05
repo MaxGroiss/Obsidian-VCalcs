@@ -77,7 +77,8 @@ export function updateVariable(
     varName: string,
     value: any,
     type: string,
-    blockTitle: string
+    blockTitle: string,
+    blockId: string | null = null
 ): void {
     if (!variableStore[notePath]) {
         variableStore[notePath] = {};
@@ -89,6 +90,25 @@ export function updateVariable(
         value,
         type,
         blockTitle,
+        sourceBlockId: blockId,
         timestamp: Date.now()
     };
+}
+
+// Remove all variables from a specific block in a vset
+export function removeBlockVariables(
+    variableStore: VariableStore,
+    notePath: string,
+    vset: string,
+    blockId: string
+): void {
+    const vsetVars = variableStore[notePath]?.[vset];
+    if (!vsetVars) return;
+
+    // Find and remove variables that belong to this block
+    for (const varName of Object.keys(vsetVars)) {
+        if (vsetVars[varName].sourceBlockId === blockId) {
+            delete vsetVars[varName];
+        }
+    }
 }

@@ -6,6 +6,7 @@ export interface VariableInfo {
     value: VariableValue;
     type: string;
     blockTitle: string;
+    sourceBlockId: string | null;  // Track which block defined this variable
     timestamp: number;
 }
 
@@ -42,6 +43,11 @@ export interface CalcBlocksSettings {
     backgroundStyle: 'default' | 'transparent' | 'subtle' | 'solid';
     compactMode: boolean;
     autocompleteAcceptKey: 'tab' | 'enter' | 'both';
+    // Callout button visibility
+    showRunButton: boolean;
+    showToggleCodeButton: boolean;
+    showClearButton: boolean;
+    showCopyBlockButton: boolean;
 }
 
 // Parsed block options
@@ -77,7 +83,7 @@ export interface EditorViewPlugin {
     settings: CalcBlocksSettings;
     variableStore: VariableStore;
     getVariables(notePath: string, vset: string): VariableSet | undefined;
-    updateVariable(notePath: string, vset: string, varName: string, value: VariableValue, type: string, blockTitle: string): void;
+    updateVariable(notePath: string, vset: string, varName: string, value: VariableValue, type: string, blockTitle: string, blockId?: string | null): void;
 }
 
 export interface VariablesViewPlugin {

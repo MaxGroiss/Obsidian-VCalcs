@@ -22,7 +22,7 @@ export class VCalcVariablesView extends ItemView {
     }
 
     getIcon(): string {
-        return 'calculator';
+        return 'vcalc-variables';
     }
 
     async onOpen() {

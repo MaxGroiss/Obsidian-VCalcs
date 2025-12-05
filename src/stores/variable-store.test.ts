@@ -6,6 +6,7 @@ import {
   getVariables,
   setVariables,
   updateVariable,
+  removeBlockVariables,
 } from './variable-store';
 import { VariableStore, VSetColorMap } from '../types';
 import { VSET_COLORS } from '../constants';
@@ -162,7 +163,7 @@ describe('Variable Store', () => {
     it('should clear variables for specific note', () => {
       variableStore['note1.md'] = {
         main: {
-          x: { value: 5, type: 'int', blockTitle: 'Block 1', timestamp: Date.now() },
+          x: { value: 5, type: 'int', blockTitle: 'Block 1', sourceBlockId: 'block1', timestamp: Date.now() },
         },
       };
 
@@ -174,12 +175,12 @@ describe('Variable Store', () => {
     it('should not affect other notes', () => {
       variableStore['note1.md'] = {
         main: {
-          x: { value: 5, type: 'int', blockTitle: 'Block 1', timestamp: Date.now() },
+          x: { value: 5, type: 'int', blockTitle: 'Block 1', sourceBlockId: 'block1', timestamp: Date.now() },
         },
       };
       variableStore['note2.md'] = {
         main: {
-          y: { value: 10, type: 'int', blockTitle: 'Block 2', timestamp: Date.now() },
+          y: { value: 10, type: 'int', blockTitle: 'Block 2', sourceBlockId: 'block2', timestamp: Date.now() },
         },
       };
 
@@ -199,13 +200,13 @@ describe('Variable Store', () => {
     it('should clear all vsets for a note', () => {
       variableStore['note1.md'] = {
         main: {
-          x: { value: 5, type: 'int', blockTitle: 'Block 1', timestamp: Date.now() },
+          x: { value: 5, type: 'int', blockTitle: 'Block 1', sourceBlockId: 'block1', timestamp: Date.now() },
         },
         physics: {
-          force: { value: 10, type: 'float', blockTitle: 'Block 2', timestamp: Date.now() },
+          force: { value: 10, type: 'float', blockTitle: 'Block 2', sourceBlockId: 'block2', timestamp: Date.now() },
         },
         math: {
-          pi: { value: 3.14, type: 'float', blockTitle: 'Block 3', timestamp: Date.now() },
+          pi: { value: 3.14, type: 'float', blockTitle: 'Block 3', sourceBlockId: 'block3', timestamp: Date.now() },
         },
       };
 
@@ -218,8 +219,8 @@ describe('Variable Store', () => {
   describe('getVariables', () => {
     it('should return variables for existing vset', () => {
       const vars = {
-        x: { value: 5, type: 'int', blockTitle: 'Block 1', timestamp: Date.now() },
-        y: { value: 10, type: 'int', blockTitle: 'Block 1', timestamp: Date.now() },
+        x: { value: 5, type: 'int', blockTitle: 'Block 1', sourceBlockId: 'block1', timestamp: Date.now() },
+        y: { value: 10, type: 'int', blockTitle: 'Block 1', sourceBlockId: 'block1', timestamp: Date.now() },
       };
       variableStore['note1.md'] = { main: vars };
 
@@ -245,10 +246,10 @@ describe('Variable Store', () => {
     it('should handle note with multiple vsets', () => {
       variableStore['note1.md'] = {
         main: {
-          x: { value: 5, type: 'int', blockTitle: 'Block 1', timestamp: Date.now() },
+          x: { value: 5, type: 'int', blockTitle: 'Block 1', sourceBlockId: 'block1', timestamp: Date.now() },
         },
         physics: {
-          force: { value: 10, type: 'float', blockTitle: 'Block 2', timestamp: Date.now() },
+          force: { value: 10, type: 'float', blockTitle: 'Block 2', sourceBlockId: 'block2', timestamp: Date.now() },
         },
       };
 
@@ -271,8 +272,8 @@ describe('Variable Store', () => {
   describe('setVariables', () => {
     it('should set variables for new vset', () => {
       const vars = {
-        x: { value: 5, type: 'int', blockTitle: 'Block 1', timestamp: Date.now() },
-        y: { value: 10, type: 'int', blockTitle: 'Block 1', timestamp: Date.now() },
+        x: { value: 5, type: 'int', blockTitle: 'Block 1', sourceBlockId: 'block1', timestamp: Date.now() },
+        y: { value: 10, type: 'int', blockTitle: 'Block 1', sourceBlockId: 'block1', timestamp: Date.now() },
       };
 
       setVariables(variableStore, 'note1.md', 'main', vars);
@@ -285,10 +286,10 @@ describe('Variable Store', () => {
 
     it('should overwrite existing variables', () => {
       const oldVars = {
-        x: { value: 5, type: 'int', blockTitle: 'Block 1', timestamp: Date.now() },
+        x: { value: 5, type: 'int', blockTitle: 'Block 1', sourceBlockId: 'block1', timestamp: Date.now() },
       };
       const newVars = {
-        y: { value: 10, type: 'int', blockTitle: 'Block 2', timestamp: Date.now() },
+        y: { value: 10, type: 'int', blockTitle: 'Block 2', sourceBlockId: 'block2', timestamp: Date.now() },
       };
 
       setVariables(variableStore, 'note1.md', 'main', oldVars);
@@ -301,7 +302,7 @@ describe('Variable Store', () => {
 
     it('should create note entry if not exists', () => {
       const vars = {
-        x: { value: 5, type: 'int', blockTitle: 'Block 1', timestamp: Date.now() },
+        x: { value: 5, type: 'int', blockTitle: 'Block 1', sourceBlockId: 'block1', timestamp: Date.now() },
       };
 
       setVariables(variableStore, 'newNote.md', 'main', vars);
@@ -313,12 +314,12 @@ describe('Variable Store', () => {
     it('should not affect other vsets in same note', () => {
       variableStore['note1.md'] = {
         physics: {
-          force: { value: 10, type: 'float', blockTitle: 'Block 1', timestamp: Date.now() },
+          force: { value: 10, type: 'float', blockTitle: 'Block 1', sourceBlockId: 'block1', timestamp: Date.now() },
         },
       };
 
       const mathVars = {
-        pi: { value: 3.14, type: 'float', blockTitle: 'Block 2', timestamp: Date.now() },
+        pi: { value: 3.14, type: 'float', blockTitle: 'Block 2', sourceBlockId: 'block2', timestamp: Date.now() },
       };
 
       setVariables(variableStore, 'note1.md', 'math', mathVars);
@@ -344,7 +345,14 @@ describe('Variable Store', () => {
       expect(variableStore['note1.md'].main.x.value).toBe(5);
       expect(variableStore['note1.md'].main.x.type).toBe('int');
       expect(variableStore['note1.md'].main.x.blockTitle).toBe('Block 1');
+      expect(variableStore['note1.md'].main.x.sourceBlockId).toBeNull();
       expect(variableStore['note1.md'].main.x.timestamp).toBeTypeOf('number');
+    });
+
+    it('should add variable with block ID', () => {
+      updateVariable(variableStore, 'note1.md', 'main', 'x', 5, 'int', 'Block 1', 'block123');
+
+      expect(variableStore['note1.md'].main.x.sourceBlockId).toBe('block123');
     });
 
     it('should update existing variable', () => {
@@ -417,6 +425,79 @@ describe('Variable Store', () => {
 
       expect(variableStore['note1.md'].main.x.blockTitle).toBe('Block 1');
       expect(variableStore['note1.md'].main.y.blockTitle).toBe('Block 2');
+    });
+  });
+
+  describe('removeBlockVariables', () => {
+    it('should remove all variables from a specific block', () => {
+      updateVariable(variableStore, 'note1.md', 'main', 'x', 5, 'int', 'Block 1', 'block1');
+      updateVariable(variableStore, 'note1.md', 'main', 'y', 10, 'int', 'Block 1', 'block1');
+      updateVariable(variableStore, 'note1.md', 'main', 'z', 15, 'int', 'Block 2', 'block2');
+
+      removeBlockVariables(variableStore, 'note1.md', 'main', 'block1');
+
+      expect(variableStore['note1.md'].main.x).toBeUndefined();
+      expect(variableStore['note1.md'].main.y).toBeUndefined();
+      expect(variableStore['note1.md'].main.z).toBeDefined();
+      expect(variableStore['note1.md'].main.z.value).toBe(15);
+    });
+
+    it('should not affect variables from other blocks', () => {
+      updateVariable(variableStore, 'note1.md', 'main', 'a', 1, 'int', 'Block A', 'blockA');
+      updateVariable(variableStore, 'note1.md', 'main', 'b', 2, 'int', 'Block B', 'blockB');
+      updateVariable(variableStore, 'note1.md', 'main', 'c', 3, 'int', 'Block C', 'blockC');
+
+      removeBlockVariables(variableStore, 'note1.md', 'main', 'blockB');
+
+      expect(variableStore['note1.md'].main.a.value).toBe(1);
+      expect(variableStore['note1.md'].main.b).toBeUndefined();
+      expect(variableStore['note1.md'].main.c.value).toBe(3);
+    });
+
+    it('should do nothing if note does not exist', () => {
+      // Should not throw
+      removeBlockVariables(variableStore, 'nonexistent.md', 'main', 'block1');
+      expect(variableStore['nonexistent.md']).toBeUndefined();
+    });
+
+    it('should do nothing if vset does not exist', () => {
+      variableStore['note1.md'] = {};
+      // Should not throw
+      removeBlockVariables(variableStore, 'note1.md', 'nonexistent', 'block1');
+      expect(variableStore['note1.md'].nonexistent).toBeUndefined();
+    });
+
+    it('should do nothing if block has no variables', () => {
+      updateVariable(variableStore, 'note1.md', 'main', 'x', 5, 'int', 'Block 1', 'block1');
+
+      removeBlockVariables(variableStore, 'note1.md', 'main', 'nonexistent');
+
+      expect(variableStore['note1.md'].main.x.value).toBe(5);
+    });
+
+    it('should not remove variables with null sourceBlockId', () => {
+      updateVariable(variableStore, 'note1.md', 'main', 'x', 5, 'int', 'Block 1', null);
+      updateVariable(variableStore, 'note1.md', 'main', 'y', 10, 'int', 'Block 2', 'block2');
+
+      removeBlockVariables(variableStore, 'note1.md', 'main', 'block2');
+
+      expect(variableStore['note1.md'].main.x.value).toBe(5);
+      expect(variableStore['note1.md'].main.y).toBeUndefined();
+    });
+
+    it('should handle variable reassignment scenario (last definer wins)', () => {
+      // Block A defines x
+      updateVariable(variableStore, 'note1.md', 'main', 'x', 5, 'int', 'Block A', 'blockA');
+      expect(variableStore['note1.md'].main.x.sourceBlockId).toBe('blockA');
+
+      // Block B redefines x
+      updateVariable(variableStore, 'note1.md', 'main', 'x', 10, 'int', 'Block B', 'blockB');
+      expect(variableStore['note1.md'].main.x.sourceBlockId).toBe('blockB');
+
+      // Now if Block B is run again and x is removed from its code,
+      // removeBlockVariables will remove x (since it's owned by blockB)
+      removeBlockVariables(variableStore, 'note1.md', 'main', 'blockB');
+      expect(variableStore['note1.md'].main.x).toBeUndefined();
     });
   });
 });

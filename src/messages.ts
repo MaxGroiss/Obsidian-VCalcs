@@ -1,8 +1,46 @@
 /**
- * Centralized message strings for the VCalc plugin.
+ * @fileoverview Centralized message strings for the VCalc plugin.
  *
- * This file contains all user-facing messages, organized by their source/context.
- * Each section documents where the messages are displayed and what triggers them.
+ * This module provides a single source of truth for all user-facing text,
+ * making it easy to maintain consistency, enable future internationalization,
+ * and keep messages separate from application logic.
+ *
+ * ## Message Categories
+ *
+ * | Export | Purpose | Display Location |
+ * |--------|---------|------------------|
+ * | `NOTICES` | Toast notifications | Obsidian Notice popups |
+ * | `UI` | Buttons, labels, headings | Throughout the UI |
+ * | `TOOLTIPS` | Hover text | Button/element titles |
+ * | `STATUS` | Execution feedback | Editor view status bar |
+ * | `SETTINGS` | Settings page text | Plugin settings tab |
+ * | `CONSOLE` | Debug/error logging | Browser console |
+ *
+ * ## Usage Pattern
+ *
+ * ```typescript
+ * import { NOTICES, UI, CONSOLE } from './messages';
+ *
+ * // Static message
+ * new Notice(NOTICES.PYTHON_READY);
+ *
+ * // Dynamic message with interpolation
+ * new Notice(NOTICES.VARIABLES_CLEARED(filename));
+ *
+ * // Console logging
+ * console.error(CONSOLE.ERROR_RUNNING_BLOCK, error);
+ * ```
+ *
+ * ## Design Decisions
+ *
+ * - **Functions for dynamic messages**: Messages with variables are functions
+ *   that return strings, allowing type-safe interpolation
+ * - **Grouped by context**: Messages are organized by where they appear,
+ *   not by feature, making it easier to find related text
+ * - **Inline documentation**: Each section documents its trigger conditions
+ *   and source location for easy debugging
+ *
+ * @module messages
  */
 
 // =============================================================================

@@ -23,8 +23,7 @@
 ## Requirements
 
 - **Obsidian** v1.0.0 or higher
-- **Python 3** installed and accessible via command line
-- **Desktop only** - does not work on mobile
+- No additional dependencies - Python runs via Pyodide (WebAssembly)
 
 ---
 
@@ -36,14 +35,13 @@ Since this plugin is in development, it's not available in the Obsidian Communit
    - `main.js`
    - `manifest.json`
    - `styles.css`
-   - `python_to_latex.py`
 
 2. Create a folder in your vault:
    ```
    YourVault/.obsidian/plugins/obsidian-vcalc/
    ```
 
-3. Copy all four files into that folder
+3. Copy all three files into that folder
 
 4. In Obsidian: Settings → Community Plugins → Enable "VCalc"
 
@@ -58,7 +56,7 @@ Since this plugin is in development, it's not available in the Obsidian Communit
 ```markdown
 > [!vcalc] My Calculation Title
 > ```python
-> # {vset:main}
+> # vcalc: vset=main
 > x = 5
 > y = 10
 > z = x + y
@@ -67,7 +65,7 @@ Since this plugin is in development, it's not available in the Obsidian Communit
 
 - `[!vcalc]` - The callout identifier
 - `My Calculation Title` - Your custom title (displayed in the header)
-- `# {vset:main}` - Links this block to a variable set (optional)
+- `# vcalc: vset=main` - Links this block to a variable set (optional)
 
 Click **Run** to execute and render the LaTeX output.
 
@@ -78,7 +76,7 @@ Use the same vset name to share variables:
 ```markdown
 > [!vcalc] Step 1: Define Parameters
 > ```python
-> # {vset:circuit}
+> # vcalc: vset=circuit
 > R = 100
 > L = 0.01
 > C = 1e-6
@@ -88,7 +86,7 @@ Some explanatory text...
 
 > [!vcalc] Step 2: Calculate Resonance
 > ```python
-> # {vset:circuit}
+> # vcalc: vset=circuit
 > f_0 = 1 / (2 * pi * sqrt(L * C))
 > ```
 ```
@@ -155,11 +153,10 @@ Click the **calculator icon** in the left ribbon to open the Variables panel. It
 - Blocks must be run in order (no automatic dependency resolution)
 - No support for loops, conditionals, or function definitions
 - Complex numbers display may be inconsistent
-- No mobile support
 
 ---
 
-## Current Features (v0.6.0)
+## Current Features (v0.8.0)
 
 ### Core Functionality
 
@@ -172,7 +169,7 @@ Click the **calculator icon** in the left ribbon to open the Variables panel. It
 ### Variable Sets (VSet)
 
 - **Shared Variables** - Define variables in one block, use them in another
-- **Named Sets** - Organize calculations with `# {vset:main}`, `# {vset:circuit}`, etc.
+- **Named Sets** - Organize calculations with `# vcalc: vset=main`, `# vcalc: vset=circuit`, etc.
 - **Automatic Color Coding** - Each vset gets a unique color (green, blue, orange, purple, teal, pink, yellow, red)
 - **Sidebar Panel** - View all variables with their values, types, and source blocks
 
@@ -213,18 +210,17 @@ Click the **calculator icon** in the left ribbon to open the Variables panel. It
 **Per-Block Options:**
 
 ```python
-# {vset:main, hidden, accent:vset, bg:transparent, compact}
+# vcalc: vset=main hidden accent bg=transparent compact
 ```
 
 |Option|Values|Description|
 |---|---|---|
-|`vset:name`|any identifier|Variable set name|
+|`vset=name`|any identifier|Variable set name|
 |`hidden`|flag|Hide code in editor & PDF export|
-|`accent:vset`|flag|Sync border color with vset|
-|`accent:default`|flag|Use default blue accent|
-|`bg:transparent`|flag|No background|
-|`bg:subtle`|flag|Very light background|
-|`bg:solid`|flag|More visible background|
+|`accent`|flag|Sync border color with vset|
+|`bg=transparent`|flag|No background|
+|`bg=subtle`|flag|Very light background|
+|`bg=solid`|flag|More visible background|
 |`compact`|flag|Reduced padding|
 
 ### Math Functions Supported
@@ -399,11 +395,12 @@ surface(X, Y, Z)
 │                      │                               │
 │                      ▼                               │
 │  ┌───────────────────────────────────────────────┐  │
-│  │           Python Subprocess                    │  │
+│  │           Pyodide (Python in WebAssembly)      │  │
 │  │  • AST parsing                                 │  │
 │  │  • Expression evaluation                       │  │
 │  │  • LaTeX conversion                            │  │
 │  │  • Variable extraction                         │  │
+│  │  • Runs entirely in browser (no install)       │  │
 │  └───────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────┘
 ```
@@ -417,7 +414,7 @@ surface(X, Y, Z)
 ```markdown
 > [!vcalc] Ohm's Law
 > ```python
-> # {vset:circuit}
+> # vcalc: vset=circuit
 > U = 12      # Voltage in V
 > R = 470     # Resistance in Ω
 > I = U / R   # Current
@@ -431,14 +428,14 @@ surface(X, Y, Z)
 ```markdown
 > [!vcalc] Define Constants
 > ```python
-> # {vset:physics}
+> # vcalc: vset=physics
 > g = 9.81
 > m = 5
 > ```
 
 > [!vcalc] Calculate Energy
 > ```python
-> # {vset:physics}
+> # vcalc: vset=physics
 > h = 10
 > E_pot = m * g * h
 > ```

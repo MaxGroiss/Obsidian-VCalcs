@@ -1,14 +1,62 @@
+/**
+ * @fileoverview Plugin settings tab for VCalc.
+ *
+ * This module provides the Settings tab UI that appears in Obsidian's settings
+ * panel. It allows users to configure VCalc behavior, display options, and
+ * appearance without editing configuration files directly.
+ *
+ * ## Settings Categories
+ *
+ * | Category | Settings |
+ * |----------|----------|
+ * | Behavior | Auto-save on Run |
+ * | Display | Show Symbolic, Show Substitution, Show Result |
+ * | Appearance | Background Style, Compact Mode |
+ * | VSet Colors | Sync Accent with VSet Color |
+ * | Editor | Autocomplete Accept Key |
+ * | Buttons | Show Run, Toggle Code, Clear, Copy Block |
+ *
+ * ## Architecture
+ *
+ * The settings tab uses a `SettingsProvider` interface to decouple from the
+ * main plugin class, enabling easier testing and clearer dependencies.
+ *
+ * @module settings
+ * @see {@link types#CalcBlocksSettings} for the settings interface
+ * @see {@link constants#DEFAULT_SETTINGS} for default values
+ * @see {@link messages#SETTINGS} for all UI text
+ */
+
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import { CalcBlocksSettings } from './types';
 import { VSET_COLORS } from './constants';
 import { SETTINGS } from './messages';
 
-// Interface for what we need from the plugin
+/**
+ * Interface for the plugin features needed by the settings tab.
+ *
+ * Decouples the settings tab from the main plugin class, allowing for
+ * easier testing with mock providers.
+ */
 export interface SettingsProvider {
+    /** Current plugin settings object */
     settings: CalcBlocksSettings;
+    /** Persists settings to disk */
     saveSettings(): Promise<void>;
 }
 
+/**
+ * Settings tab for VCalc plugin configuration.
+ *
+ * Renders the settings UI in Obsidian's settings panel and handles
+ * persisting changes to disk when users modify settings.
+ *
+ * @example
+ * ```typescript
+ * // In main plugin onload()
+ * this.addSettingTab(new VCalcSettingTab(this.app, this));
+ * ```
+ */
 export class VCalcSettingTab extends PluginSettingTab {
     private provider: SettingsProvider;
 

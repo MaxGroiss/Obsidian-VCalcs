@@ -1,9 +1,81 @@
+/**
+ * @fileoverview LaTeX output persistence to markdown files.
+ *
+ * This module handles saving and clearing LaTeX calculation outputs directly
+ * in the markdown source files. This allows calculation results to be:
+ * - Visible when viewing the note outside Obsidian
+ * - Preserved across Obsidian restarts
+ * - Version controlled with the note content
+ *
+ * ## File Format
+ *
+ * LaTeX output is stored within HTML comment markers inside the callout:
+ *
+ * ```markdown
+ * > [!vcalc] My Calculation
+ * > ```python
+ * > # vcalc: id=abc12345
+ * > x = 5
+ * > y = x * 2
+ * > ```
+ * >
+ * > <!-- vcalc-output -->
+ * > $$
+ * > \begin{aligned}
+ * > x &= 5 \\
+ * > y &= x \cdot 2 = 5 \cdot 2 = 10
+ * > \end{aligned}
+ * > $$
+ * > <!-- /vcalc-output -->
+ * ```
+ *
+ * ## Block Identification
+ *
+ * Blocks are identified by their zero-based index in the file (nth occurrence
+ * of `[!vcalc]`). This index is stored as `data-vcalc-index` on the DOM element
+ * during rendering and used when saving/clearing.
+ *
+ * @module file/latex-persistence
+ * @see {@link main#processCalculationCallouts} for where blocks get indexed
+ */
+
 import { App, Notice, MarkdownView } from 'obsidian';
 import { getErrorMessage } from '../utils/type-guards';
 import { NOTICES, CONSOLE } from '../messages';
 
 /**
- * Save LaTeX output for a specific block to the file.
+ * Saves LaTeX output for a specific calculation block to the markdown file.
+ *
+ * Reads the file, locates the correct block by index, and either inserts
+ * new output or replaces existing output. The output is wrapped in HTML
+ * comment markers for easy identification.
+ *
+ * ## Algorithm
+ *
+ * 1. Read the file and split into lines
+ * 2. Scan for the Nth `[!vcalc]` callout (N = blockIndex)
+ * 3. Find the end of the code block (closing ```)
+ * 4. Check for existing vcalc-output markers
+ * 5. If existing output found, remove it (including blank line before)
+ * 6. Insert new output lines after the code block
+ * 7. Write the modified content back to file
+ *
+ * @param app - Obsidian App instance for file access
+ * @param callout - The callout DOM element (must have data-vcalc-latex and data-vcalc-index)
+ * @param sourcePath - Path to the markdown file
+ * @param blockTitle - Human-readable title for the Notice message
+ *
+ * @example
+ * ```typescript
+ * // Save LaTeX for a block after execution
+ * await saveBlockLatexToFile(
+ *     app,
+ *     calloutEl,
+ *     'notes/physics.md',
+ *     'Kinematics'
+ * );
+ * // Shows Notice: 'LaTeX saved for "Kinematics"'
+ * ```
  */
 export async function saveBlockLatexToFile(
     app: App,
@@ -124,7 +196,27 @@ export async function saveBlockLatexToFile(
 }
 
 /**
- * Clear all saved LaTeX from the current note.
+ * Clears all saved LaTeX outputs from the currently active note.
+ *
+ * Scans the entire file for vcalc-output markers and removes all sections
+ * found. This is useful for cleaning up a note before sharing or when
+ * starting fresh with calculations.
+ *
+ * ## Behavior
+ *
+ * - Operates on the currently active markdown view
+ * - Removes all `<!-- vcalc-output -->...<!-- /vcalc-output -->` sections
+ * - Also removes blank callout lines (`> `) immediately before output sections
+ * - Shows a Notice with the count of removed outputs
+ *
+ * @param app - Obsidian App instance for workspace and file access
+ *
+ * @example
+ * ```typescript
+ * // Clear all LaTeX from current note (e.g., from a command)
+ * await clearAllSavedLatex(app);
+ * // Shows Notice: 'Cleared 5 saved LaTeX output(s) from note!'
+ * ```
  */
 export async function clearAllSavedLatex(app: App): Promise<void> {
     const activeView = app.workspace.getActiveViewOfType(MarkdownView);
@@ -181,7 +273,23 @@ export async function clearAllSavedLatex(app: App): Promise<void> {
 }
 
 /**
- * Clear saved LaTeX for a specific block.
+ * Clears saved LaTeX output for a specific calculation block.
+ *
+ * Locates the specified block by index and removes only its output section,
+ * leaving other blocks' outputs untouched. Used by the "Clear" button on
+ * individual callout blocks.
+ *
+ * @param app - Obsidian App instance for file access
+ * @param sourcePath - Path to the markdown file
+ * @param blockIndex - Zero-based index of the vcalc block in the file
+ * @param blockTitle - Human-readable title for the Notice message
+ *
+ * @example
+ * ```typescript
+ * // Clear LaTeX for a specific block (e.g., from its Clear button)
+ * await clearBlockSavedLatex(app, 'notes/physics.md', 2, 'Kinematics');
+ * // Shows Notice: 'Cleared saved LaTeX for "Kinematics"'
+ * ```
  */
 export async function clearBlockSavedLatex(
     app: App,

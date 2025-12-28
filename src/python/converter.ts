@@ -1,8 +1,57 @@
+/**
+ * @fileoverview Python code generator for AST-based LaTeX conversion.
+ *
+ * This module generates Python code that uses Python's Abstract Syntax Tree (AST)
+ * to parse mathematical expressions and convert them to LaTeX notation. The
+ * generated Python code is executed by Pyodide in the browser.
+ *
+ * ## How It Works
+ *
+ * ```
+ * User's Python Code → generateConverterCodeWithVars() → Python Template
+ *                                                              ↓
+ *                    LaTeX Output ← Pyodide Execution ← AST Parsing
+ * ```
+ *
+ * The Python template:
+ * 1. Parses user code into an AST using Python's `ast` module
+ * 2. Walks assignment statements to find variables
+ * 3. Executes each statement to compute values
+ * 4. Converts AST nodes to LaTeX notation
+ * 5. Returns JSON with LaTeX string and variable information
+ *
+ * ## LaTeX Features
+ *
+ * - Greek letters: `alpha` → `\alpha`, `Gamma` → `\Gamma`
+ * - Subscripts: `x_1` → `x_{1}`, `alpha_max` → `\alpha_{max}`
+ * - Functions: `sqrt(x)` → `\sqrt{x}`, `sin(x)` → `\sin(x)`
+ * - Operators: `*` → `\cdot`, `/` → `\frac{}{}`
+ * - Complex numbers: Supported via Python's `j` notation
+ *
+ * ## Security Note
+ *
+ * The generated code uses Python's `exec()` to evaluate expressions. This is
+ * safe because Pyodide runs in a WebAssembly sandbox with no access to the
+ * file system or network. The user can only harm their own Obsidian session.
+ *
+ * @module python/converter
+ * @see {@link pyodide-executor} for the code that runs this Python
+ * @see {@link types#DisplayOptions} for controlling output visibility
+ */
+
 import { DisplayOptions } from '../types';
 
 /**
- * Generates Python code that converts user code to LaTeX.
- * This is the simple version without variable injection.
+ * Generates Python code for simple LaTeX conversion (no variable injection).
+ *
+ * Creates a self-contained Python script that parses the user's code and
+ * outputs LaTeX. This is the simpler version used when vset integration
+ * is not needed.
+ *
+ * @param userCode - Python code to convert to LaTeX
+ * @returns Complete Python script ready for Pyodide execution
+ *
+ * @deprecated Prefer {@link generateConverterCodeWithVars} for full functionality
  */
 export function generateConverterCode(userCode: string): string {
     // Escape the user code for embedding in Python string
@@ -227,8 +276,41 @@ except Exception as e:
 }
 
 /**
- * Generates Python code that converts user code to LaTeX with variable injection.
- * This version supports injecting existing variables and extracting new ones.
+ * Generates Python code for LaTeX conversion with variable injection.
+ *
+ * This is the primary converter used by VCalc blocks. It:
+ * 1. Injects existing variables from the vset into the Python namespace
+ * 2. Parses and executes the user's code
+ * 3. Generates LaTeX based on display options
+ * 4. Returns new/updated variables for the vset
+ *
+ * ## Output Format
+ *
+ * The generated Python script outputs JSON to stdout:
+ * ```json
+ * {
+ *   "latex": "\\begin{aligned}z &= x + y = 5 + 10 = 15\\end{aligned}",
+ *   "variables": {
+ *     "z": { "value": 15, "type": "int" }
+ *   }
+ * }
+ * ```
+ *
+ * @param userCode - Python code to convert (the user's calculation)
+ * @param varInjection - Python code to inject existing variables (e.g., "x = 5\ny = 10\n")
+ * @param displayOptions - Controls which parts of equations are shown
+ * @returns Complete Python script ready for Pyodide execution
+ *
+ * @example
+ * ```typescript
+ * const pythonCode = generateConverterCodeWithVars(
+ *     'z = x + y',
+ *     'x = 5\ny = 10\n',
+ *     { showSymbolic: true, showSubstitution: true, showResult: true }
+ * );
+ * // pythonCode contains full Python script that outputs:
+ * // {"latex": "...", "variables": {"z": {"value": 15, "type": "int"}}}
+ * ```
  */
 export function generateConverterCodeWithVars(
     userCode: string, 
